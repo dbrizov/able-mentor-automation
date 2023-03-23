@@ -1,2 +1,1 @@
-# able-mentor-automation
-Automation scripts for Able Mentor
+# Automation scripts for Able Mentor
