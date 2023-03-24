@@ -4,7 +4,7 @@ import docx
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/StudentProfiles"
+OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles"
 REGISTER_FILE_NAME = "student_register.csv"
 REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}".replace("\\", "/")
 
@@ -58,8 +58,8 @@ texts[STUDENT_NAME_COPY] = "Ученик"
 texts[MENTOR_NAME] = "Ментор"
 
 
-def try_create_doc(register_row, file_path):
-    if (register_row[STATUS] != "Активен"):
+def try_create_doc(row_data, file_path):
+    if (row_data[STATUS] != "Активен"):
         return False
 
     doc = docx.Document()
@@ -67,7 +67,7 @@ def try_create_doc(register_row, file_path):
 
     table = doc.add_table(rows=0, cols=2)
 
-    for id, entry in enumerate(register_row):
+    for id, entry in enumerate(row_data):
         if (id == STATUS or
             id == STUDENT_NAME or
             id == GENDER or
@@ -76,9 +76,9 @@ def try_create_doc(register_row, file_path):
                 id == MENTOR_NAME):
             continue
 
-        row = table.add_row().cells
-        row[0].text = texts[id]
-        row[1].text = register_row[id]
+        table_row = table.add_row().cells
+        table_row[0].text = texts[id]
+        table_row[1].text = row_data[id]
 
     doc.save(file_path)
     return True
@@ -95,7 +95,7 @@ def create_docs():
             if (idx == 0):
                 continue  # skip first row
 
-            mentor_name = row[MENTOR_NAME].replace("/", "")
+            mentor_name = row[MENTOR_NAME].replace("/", "").strip()
             file_path = f"{OUTPUT_DIRECTORY}/{mentor_name}.docx".replace("\\", "/")
             try_create_doc(row, file_path)
 

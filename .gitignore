@@ -1,6 +1,9 @@
 # Project Specific
-StudentProfiles/
-student_register.csv
+student_profiles/
+student_self_evaluations/
+*.csv
+*.xlsx
+*.docx
 
 # Visual Studio Code
 .vscode/
