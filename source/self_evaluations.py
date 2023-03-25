@@ -11,48 +11,51 @@ OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_self_evaluations"
 RESPONSES_FILE_NAME = "self_evaluations_responses_beginning.csv"
 RESPONSES_FILE_PATH = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME}".replace("\\", "/")
 
-texts = [None] * 37
-texts[0] = "Timestamp"
-texts[1] = "Email Address"
+INDEX_IMPORTANT_THINGS = 34
+INDEX_STUDENT_NAME = 35
 
-texts[2] = "Убедителност при говорене със събеседник"  # [Важност]
-texts[3] = "Убедителност при говорене със събеседник"  # [Увереност]
-texts[4] = "Умение за говорене пред публика"  # [Важност]
-texts[5] = "Умение за говорене пред публика"  # [Увереност]
-texts[6] = "Правилна онлайн комуникация по имейл"  # [Важност]
-texts[7] = "Правилна онлайн комуникация по имейл"  # [Увереност]
-texts[8] = "Получаване, даване на конструктивна обратна връзка"  # [Важност]
-texts[9] = "Получаване, даване на конструктивна обратна връзка"  # [Увереност]
-texts[10] = "Активно слушане"  # [Важност]
-texts[11] = "Активно слушане"  # [Увереност]
+column_titles = [None] * 37
+column_titles[0] = "Timestamp"
+column_titles[1] = "Email Address"
 
-texts[12] = "Успешна и ефективна работа в екип"  # [Важност]
-texts[13] = "Успешна и ефективна работа в екип"  # [Увереност]
-texts[14] = "Генериране на идеи"  # [Важност]
-texts[15] = "Генериране на идеи"  # [Увереност]
-texts[16] = "Структуриране на проект"  # [Важност]
-texts[17] = "Структуриране на проект"  # [Увереност]
-texts[18] = "Търсене и анализ на информация"  # [Важност]
-texts[19] = "Търсене и анализ на информация"  # [Увереност]
-texts[20] = "Изготвяне на презентация"  # [Важност]
-texts[21] = "Изготвяне на презентация"  # [Увереност]
-texts[22] = "Привличане на съмишленици, партньори, спонсори за реализиране на проект"  # [Важност]
-texts[23] = "Привличане на съмишленици, партньори, спонсори за реализиране на проект"  # [Увереност]
+column_titles[2] = "Убедителност при говорене със събеседник"  # [Важност]
+column_titles[3] = "Убедителност при говорене със събеседник"  # [Увереност]
+column_titles[4] = "Умение за говорене пред публика"  # [Важност]
+column_titles[5] = "Умение за говорене пред публика"  # [Увереност]
+column_titles[6] = "Правилна онлайн комуникация по имейл"  # [Важност]
+column_titles[7] = "Правилна онлайн комуникация по имейл"  # [Увереност]
+column_titles[8] = "Получаване, даване на конструктивна обратна връзка"  # [Важност]
+column_titles[9] = "Получаване, даване на конструктивна обратна връзка"  # [Увереност]
+column_titles[10] = "Активно слушане"  # [Важност]
+column_titles[11] = "Активно слушане"  # [Увереност]
 
-texts[24] = "Поставяне на SMART цели"  # [Важност]
-texts[25] = "Поставяне на SMART цели"  # [Увереност]
-texts[26] = "Приоритизиране на задачи"  # [Важност]
-texts[27] = "Приоритизиране на задачи"  # [Увереност]
-texts[28] = "Ефективно планиране и управление на времето"  # [Важност]
-texts[29] = "Ефективно планиране и управление на времето"  # [Увереност]
-texts[30] = "Вътрешна мотивация"  # [Важност]
-texts[31] = "Вътрешна мотивация"  # [Увереност]
-texts[32] = "Ясна представа за следващите 5 години"  # [Важност]
-texts[33] = "Ясна представа за следващите 5 години"  # [Увереност]
+column_titles[12] = "Успешна и ефективна работа в екип"  # [Важност]
+column_titles[13] = "Успешна и ефективна работа в екип"  # [Увереност]
+column_titles[14] = "Генериране на идеи"  # [Важност]
+column_titles[15] = "Генериране на идеи"  # [Увереност]
+column_titles[16] = "Структуриране на проект"  # [Важност]
+column_titles[17] = "Структуриране на проект"  # [Увереност]
+column_titles[18] = "Търсене и анализ на информация"  # [Важност]
+column_titles[19] = "Търсене и анализ на информация"  # [Увереност]
+column_titles[20] = "Изготвяне на презентация"  # [Важност]
+column_titles[21] = "Изготвяне на презентация"  # [Увереност]
+column_titles[22] = "Привличане на съмишленици, партньори, спонсори за реализиране на проект"  # [Важност]
+column_titles[23] = "Привличане на съмишленици, партньори, спонсори за реализиране на проект"  # [Увереност]
 
-texts[34] = "Напиши най - важните 3 неща за теб, които искаш да постигнеш с участието си в програмата ABLE Mentor:"
-texts[35] = "Казвам се..."
-texts[36] = "Съгласен съм резултатът от моя тест да бъде даден за информация на моя ментор"
+column_titles[24] = "Поставяне на SMART цели"  # [Важност]
+column_titles[25] = "Поставяне на SMART цели"  # [Увереност]
+column_titles[26] = "Приоритизиране на задачи"  # [Важност]
+column_titles[27] = "Приоритизиране на задачи"  # [Увереност]
+column_titles[28] = "Ефективно планиране и управление на времето"  # [Важност]
+column_titles[29] = "Ефективно планиране и управление на времето"  # [Увереност]
+column_titles[30] = "Вътрешна мотивация"  # [Важност]
+column_titles[31] = "Вътрешна мотивация"  # [Увереност]
+column_titles[32] = "Ясна представа за следващите 5 години"  # [Важност]
+column_titles[33] = "Ясна представа за следващите 5 години"  # [Увереност]
+
+column_titles[34] = "Напиши най - важните 3 неща за теб, които искаш да постигнеш с участието си в програмата ABLE Mentor:"
+column_titles[35] = "Казвам се..."
+column_titles[36] = "Съгласен съм резултатът от моя тест да бъде даден за информация на моя ментор"
 
 
 def create_bar_chart(title, bar_labels, data):
@@ -90,11 +93,11 @@ def try_create_doc(student_name, row_data, file_path):
 
     # 3 important things
     p = doc.add_paragraph()
-    p.add_run(f"{texts[34]}").bold = True
-    doc.add_paragraph(f'"{row_data[34]}"')
+    p.add_run(f"{column_titles[INDEX_IMPORTANT_THINGS]}").bold = True
+    doc.add_paragraph(f'"{row_data[INDEX_IMPORTANT_THINGS]}"')
 
     # communication
-    bar_labels = [x.replace(" ", "\n") for x in texts[2:12:2]]
+    bar_labels = [x.replace(" ", "\n") for x in column_titles[2:12:2]]
     data = {
         "Важност - начало": [int(x) for x in row_data[2:12:2]],
         "Увереност - начало": [int(x) for x in row_data[3:12:2]],
@@ -105,7 +108,7 @@ def try_create_doc(student_name, row_data, file_path):
     # plt.savefig(file_path.replace(".docx", ".png"))  # debug png
 
     # business skills
-    bar_labels = [x.replace(" ", "\n") for x in texts[12:24:2]]
+    bar_labels = [x.replace(" ", "\n") for x in column_titles[12:24:2]]
     data = {
         "Важност - начало": [int(x) for x in row_data[12:24:2]],
         "Увереност - начало": [int(x) for x in row_data[13:24:2]],
@@ -115,7 +118,7 @@ def try_create_doc(student_name, row_data, file_path):
     doc.add_picture(png)
 
     # personal effectiveness
-    bar_labels = [x.replace(" ", "\n") for x in texts[24:34:2]]
+    bar_labels = [x.replace(" ", "\n") for x in column_titles[24:34:2]]
     data = {
         "Важност - начало": [int(x) for x in row_data[24:34:2]],
         "Увереност - начало": [int(x) for x in row_data[25:34:2]],
@@ -139,7 +142,7 @@ def create_docs():
             if (idx == 0):
                 continue  # skip first row
 
-            student_name = row[35].replace("/", "").strip()
+            student_name = row[INDEX_STUDENT_NAME].replace("/", "").strip()
             file_path = f"{OUTPUT_DIRECTORY}/{student_name}.docx".replace("\\", "/")
             try_create_doc(student_name, row, file_path)
 

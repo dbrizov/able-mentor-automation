@@ -32,30 +32,30 @@ HEARD_OF_ABLE_MENTOR = 20
 STUDENT_NAME_COPY = 21
 MENTOR_NAME = 22
 
-texts = [None] * 23
-texts[STATUS] = "Статус"
-texts[STUDENT_NAME] = "Ученик"
-texts[AGE] = "Възраст"
-texts[GENDER] = "Пол"
-texts[SCHOOL_NAME] = "Училище"
-texts[FORMAT] = "Населено място"
-texts[GRADE] = "Завършен клас"
-texts[SCHOOL_INTERESTS] = "Интереси, свързани с училище"
-texts[NON_SCHOOL_INTERESTS] = "Интереси извън училище"
-texts[ENGLISH_LEVEL] = "Ниво на английски език"
-texts[SPORT] = "Спорт"
-texts[WHAT_TO_DO_AFTER_SCHOOL] = "Какво ще правя след гимназията:"
-texts[INTERESTS] = "В кои сфери имаш интерес да се развиваш и в кои по-слаб?"
-texts[SKILLS_TO_IMPROVE] = "Кои свои качества искаш да промениш/ подобриш?"
-texts[FREE_TIME_ACTIVITIES] = "Как се забавляваш в свободното си време?"
-texts[DIFFICULT_SITUATION] = "Разкажи ни за трудна ситуация и как си се справил/а?"
-texts[IDEA_IN_ABLE_MENTOR] = "Каква идея искаш да осъществиш в рамките на ABLE Mentor?"
-texts[WANT_TO_CHANGE] = "Желая да променя..."
-texts[HOURS_PER_WEEK] = "По колко часа седмично би отделял/а на проекта?"
-texts[PROJECT_WITH_MENTOR] = "По какъв проект би работил/а със своя ментор?"
-texts[HEARD_OF_ABLE_MENTOR] = "Научил/а за ABLE Mentor от?"
-texts[STUDENT_NAME_COPY] = "Ученик"
-texts[MENTOR_NAME] = "Ментор"
+column_titles = [None] * 23
+column_titles[STATUS] = "Статус"
+column_titles[STUDENT_NAME] = "Ученик"
+column_titles[AGE] = "Възраст"
+column_titles[GENDER] = "Пол"
+column_titles[SCHOOL_NAME] = "Училище"
+column_titles[FORMAT] = "Населено място"
+column_titles[GRADE] = "Завършен клас"
+column_titles[SCHOOL_INTERESTS] = "Интереси, свързани с училище"
+column_titles[NON_SCHOOL_INTERESTS] = "Интереси извън училище"
+column_titles[ENGLISH_LEVEL] = "Ниво на английски език"
+column_titles[SPORT] = "Спорт"
+column_titles[WHAT_TO_DO_AFTER_SCHOOL] = "Какво ще правя след гимназията:"
+column_titles[INTERESTS] = "В кои сфери имаш интерес да се развиваш и в кои по-слаб?"
+column_titles[SKILLS_TO_IMPROVE] = "Кои свои качества искаш да промениш/ подобриш?"
+column_titles[FREE_TIME_ACTIVITIES] = "Как се забавляваш в свободното си време?"
+column_titles[DIFFICULT_SITUATION] = "Разкажи ни за трудна ситуация и как си се справил/а?"
+column_titles[IDEA_IN_ABLE_MENTOR] = "Каква идея искаш да осъществиш в рамките на ABLE Mentor?"
+column_titles[WANT_TO_CHANGE] = "Желая да променя..."
+column_titles[HOURS_PER_WEEK] = "По колко часа седмично би отделял/а на проекта?"
+column_titles[PROJECT_WITH_MENTOR] = "По какъв проект би работил/а със своя ментор?"
+column_titles[HEARD_OF_ABLE_MENTOR] = "Научил/а за ABLE Mentor от?"
+column_titles[STUDENT_NAME_COPY] = "Ученик"
+column_titles[MENTOR_NAME] = "Ментор"
 
 
 def try_create_doc(row_data, file_path):
@@ -77,7 +77,7 @@ def try_create_doc(row_data, file_path):
             continue
 
         table_row = table.add_row().cells
-        table_row[0].text = texts[id]
+        table_row[0].text = column_titles[id]
         table_row[1].text = row_data[id]
 
     doc.save(file_path)
