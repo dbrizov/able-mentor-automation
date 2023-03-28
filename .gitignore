@@ -1,6 +1,8 @@
 # Project Specific
 student_profiles/
 student_self_evaluations/
+student_self_evaluations_online/
+student_self_evaluations_present/
 *.csv
 *.xlsx
 *.docx
