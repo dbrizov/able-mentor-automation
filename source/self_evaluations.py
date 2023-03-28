@@ -13,6 +13,7 @@ RESPONSES_FILE_PATH = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME}".replace("\\",
 
 INDEX_IMPORTANT_THINGS = 34
 INDEX_STUDENT_NAME = 35
+INDEX_SEND_TO_MENTOR = 36
 
 column_titles = [None] * 37
 column_titles[0] = "Timestamp"
@@ -143,7 +144,12 @@ def create_docs():
                 continue  # skip first row
 
             student_name = row[INDEX_STUDENT_NAME].replace("/", "").strip()
-            file_path = f"{OUTPUT_DIRECTORY}/{student_name}.docx".replace("\\", "/")
+            file_path = ""
+            if (row[INDEX_SEND_TO_MENTOR].startswith("Не")):
+                file_path = f"{OUTPUT_DIRECTORY}/{student_name}_НЕ.docx".replace("\\", "/")
+            else:
+                file_path = f"{OUTPUT_DIRECTORY}/{student_name}.docx".replace("\\", "/")
+
             try_create_doc(student_name, row, file_path)
 
 
