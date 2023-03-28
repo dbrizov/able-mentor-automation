@@ -7,9 +7,12 @@ import numpy
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_self_evaluations"
-RESPONSES_FILE_NAME = "self_evaluations_responses_beginning.csv"
-RESPONSES_FILE_PATH = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME}".replace("\\", "/")
+OUTPUT_DIRECTORY_PRESENT = f"{CURRENT_DIRECTORY}/student_self_evaluations_present"
+OUTPUT_DIRECTORY_ONLINE = f"{CURRENT_DIRECTORY}/student_self_evaluations_online"
+RESPONSES_FILE_NAME_PRESENT = "self_evaluations_responses_beginning_present.csv"
+RESPONSES_FILE_NAME_ONLINE = "self_evaluations_responses_beginning_online.csv"
+RESPONSES_FILE_PATH_PRESENT = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_PRESENT}".replace("\\", "/")
+RESPONSES_FILE_PATH_ONLINE = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_ONLINE}".replace("\\", "/")
 
 INDEX_IMPORTANT_THINGS = 34
 INDEX_STUDENT_NAME = 35
@@ -132,11 +135,11 @@ def try_create_doc(student_name, row_data, file_path):
     return True
 
 
-def create_docs():
-    if (not os.path.exists(OUTPUT_DIRECTORY)):
-        os.mkdir(OUTPUT_DIRECTORY)
+def create_docs(output_directory, responses_file_path):
+    if (not os.path.exists(output_directory)):
+        os.mkdir(output_directory)
 
-    with open(RESPONSES_FILE_PATH, encoding="utf-8", mode="r") as fstream:
+    with open(responses_file_path, encoding="utf-8", mode="r") as fstream:
         reader = csv.reader(fstream, delimiter=',', quotechar='"')
 
         for idx, row in enumerate(reader):
@@ -146,11 +149,12 @@ def create_docs():
             student_name = row[INDEX_STUDENT_NAME].replace("/", "").strip()
             file_path = ""
             if (row[INDEX_SEND_TO_MENTOR].startswith("Не")):
-                file_path = f"{OUTPUT_DIRECTORY}/{student_name}_НЕ.docx".replace("\\", "/")
+                file_path = f"{output_directory}/{student_name}_НЕ.docx".replace("\\", "/")
             else:
-                file_path = f"{OUTPUT_DIRECTORY}/{student_name}.docx".replace("\\", "/")
+                file_path = f"{output_directory}/{student_name}.docx".replace("\\", "/")
 
             try_create_doc(student_name, row, file_path)
 
 
-create_docs()
+create_docs(OUTPUT_DIRECTORY_PRESENT, RESPONSES_FILE_PATH_PRESENT)
+create_docs(OUTPUT_DIRECTORY_ONLINE, RESPONSES_FILE_PATH_ONLINE)
