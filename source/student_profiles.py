@@ -3,10 +3,10 @@ import csv
 import docx
 
 
-CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles"
 REGISTER_FILE_NAME = "student_register.csv"
-REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}".replace("\\", "/")
+REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
 
 STATUS = 0
 STUDENT_NAME = 1
@@ -59,7 +59,7 @@ column_titles[MENTOR_NAME] = "Ментор"
 
 
 def try_create_doc(row_data, file_path):
-    if (row_data[STATUS] != "Активен"):
+    if row_data[STATUS] != "Активен":
         return False
 
     doc = docx.Document()
@@ -85,14 +85,14 @@ def try_create_doc(row_data, file_path):
 
 
 def create_docs():
-    if (not os.path.exists(OUTPUT_DIRECTORY)):
+    if not os.path.exists(OUTPUT_DIRECTORY):
         os.mkdir(OUTPUT_DIRECTORY)
 
     with open(REGISTER_FILE_PATH, encoding="utf-8", mode="r") as fstream:
         reader = csv.reader(fstream, delimiter=',', quotechar='"')
 
         for idx, row in enumerate(reader):
-            if (idx == 0):
+            if idx == 0:
                 continue  # skip first row
 
             mentor_name = row[MENTOR_NAME].replace("/", "").strip()
@@ -100,4 +100,5 @@ def create_docs():
             try_create_doc(row, file_path)
 
 
-create_docs()
+if __name__ == "__main__":
+    create_docs()

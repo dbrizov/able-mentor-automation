@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 import numpy
 
 
-CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 OUTPUT_DIRECTORY_PRESENT = f"{CURRENT_DIRECTORY}/student_self_evaluations_present"
 OUTPUT_DIRECTORY_ONLINE = f"{CURRENT_DIRECTORY}/student_self_evaluations_online"
 RESPONSES_FILE_NAME_PRESENT = "self_evaluations_responses_beginning_present.csv"
 RESPONSES_FILE_NAME_ONLINE = "self_evaluations_responses_beginning_online.csv"
-RESPONSES_FILE_PATH_PRESENT = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_PRESENT}".replace("\\", "/")
-RESPONSES_FILE_PATH_ONLINE = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_ONLINE}".replace("\\", "/")
+RESPONSES_FILE_PATH_PRESENT = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_PRESENT}"
+RESPONSES_FILE_PATH_ONLINE = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_ONLINE}"
 
 INDEX_IMPORTANT_THINGS = 34
 INDEX_STUDENT_NAME = 35
@@ -136,19 +136,19 @@ def try_create_doc(student_name, row_data, file_path):
 
 
 def create_docs(output_directory, responses_file_path):
-    if (not os.path.exists(output_directory)):
+    if not os.path.exists(output_directory):
         os.mkdir(output_directory)
 
     with open(responses_file_path, encoding="utf-8", mode="r") as fstream:
         reader = csv.reader(fstream, delimiter=',', quotechar='"')
 
         for idx, row in enumerate(reader):
-            if (idx == 0):
+            if idx == 0:
                 continue  # skip first row
 
             student_name = row[INDEX_STUDENT_NAME].replace("/", "").strip()
             file_path = ""
-            if (row[INDEX_SEND_TO_MENTOR].startswith("Не")):
+            if row[INDEX_SEND_TO_MENTOR].startswith("Не"):
                 file_path = f"{output_directory}/{student_name}_НЕ.docx".replace("\\", "/")
             else:
                 file_path = f"{output_directory}/{student_name}.docx".replace("\\", "/")
@@ -156,5 +156,6 @@ def create_docs(output_directory, responses_file_path):
             try_create_doc(student_name, row, file_path)
 
 
-create_docs(OUTPUT_DIRECTORY_PRESENT, RESPONSES_FILE_PATH_PRESENT)
-create_docs(OUTPUT_DIRECTORY_ONLINE, RESPONSES_FILE_PATH_ONLINE)
+if __name__ == "__main__":
+    create_docs(OUTPUT_DIRECTORY_PRESENT, RESPONSES_FILE_PATH_PRESENT)
+    create_docs(OUTPUT_DIRECTORY_ONLINE, RESPONSES_FILE_PATH_ONLINE)
