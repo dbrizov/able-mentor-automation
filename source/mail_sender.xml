@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
     <login>
-        <sender_email>xxx@xxx.bg</sender_email>
-        <password>xxx</password>
+        <sender_email></sender_email>
+        <password></password>
     </login>
     <message>
         <subject></subject>
@@ -14,6 +14,5 @@
         <receiver_name_index>1</receiver_name_index>
         <receiver_email_index>2</receiver_email_index>
         <attachment_file_index>3</attachment_file_index>
-        <attachment_file_extension>.pdf</attachment_file_extension>
     </csv>
 </config>

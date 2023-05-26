@@ -23,7 +23,6 @@ CSV_FILE_NAME = "file_name"
 CSV_RECEIVER_NAME_INDEX = "receiver_name_index"
 CSV_RECEIVER_EMAIL_INDEX = "receiver_email_index"
 CSV_ATTACHMENT_FILE_INDEX = "attachment_file_index"
-CSV_ATTACHMENT_FILE_EXTENSION = "attachment_file_extension"
 
 
 def get_config():
@@ -47,7 +46,6 @@ def get_config():
     config[CSV_RECEIVER_NAME_INDEX] = int(csv_node.find(CSV_RECEIVER_NAME_INDEX).text)
     config[CSV_RECEIVER_EMAIL_INDEX] = int(csv_node.find(CSV_RECEIVER_EMAIL_INDEX).text)
     config[CSV_ATTACHMENT_FILE_INDEX] = int(csv_node.find(CSV_ATTACHMENT_FILE_INDEX).text)
-    config[CSV_ATTACHMENT_FILE_EXTENSION] = csv_node.find(CSV_ATTACHMENT_FILE_EXTENSION).text
     return config
 
 
@@ -67,8 +65,7 @@ def create_message(
         receiver_name: str,
         subject: str,
         body: str,
-        attachment_file_path: str,
-        attachment_file_extension: str):
+        attachment_file_path: str):
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
     message["From"] = sender_email
@@ -78,7 +75,7 @@ def create_message(
     message.attach(MIMEText(body, "plain"))
 
     # Attach file
-    file_name = f"{receiver_name}{attachment_file_extension}"
+    file_name = f"{receiver_name}.pdf"
     payload = MIMEBase("application", "octet-stream", Name=file_name)
     with open(attachment_file_path, "rb") as binary_file:
         payload.set_payload(binary_file.read())
@@ -112,12 +109,10 @@ def send_mails():
                 receiver_email = row[config[CSV_RECEIVER_EMAIL_INDEX]]
                 receiver_name = row[config[CSV_RECEIVER_NAME_INDEX]]
                 attachment_file_name = row[config[CSV_ATTACHMENT_FILE_INDEX]]
-                attachment_file_extension = config[CSV_ATTACHMENT_FILE_EXTENSION]
-                attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}{attachment_file_extension}"
-                message = create_message(sender_email, receiver_email, receiver_name, subject,
-                                         body, attachment_file_path, attachment_file_extension)
+                attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}.pdf"
+                message = create_message(sender_email, receiver_email, receiver_name, subject, body, attachment_file_path)
 
-                print(f"Sending email to '{receiver_email}'. Attached file: '{receiver_name}{attachment_file_extension}'")
+                print(f"Sending email to '{receiver_email}'. Attached file: '{receiver_name}.pdf'")
                 server.sendmail(sender_email, receiver_email, message.as_string())
 
 

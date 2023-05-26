@@ -4,7 +4,6 @@ student_self_evaluations/
 student_self_evaluations_online/
 student_self_evaluations_present/
 mail_attachments/
-mail_sender.ini
 *.csv
 *.xlsx
 *.docx
