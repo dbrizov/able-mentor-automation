@@ -2,7 +2,7 @@ import csv
 import os
 import smtplib
 import ssl
-from configparser import ConfigParser
+import xml.etree.ElementTree as ET
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -10,59 +10,81 @@ from email.mime.multipart import MIMEMultipart
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
-MAIL_ATTACHMENTS_DIRECTORY = f"{CURRENT_DIRECTORY}/mail_attachments"
-MAIL_LIST_FILE_NAME = "mail_list.csv"
-MAIL_LIST_FILE_PATH = f"{CURRENT_DIRECTORY}/{MAIL_LIST_FILE_NAME}"
-CONFIG_FILE_NAME = "mail_sender.ini"
+CONFIG_FILE_NAME = "mail_sender.xml"
 CONFIG_FILE_PATH = f"{CURRENT_DIRECTORY}/{CONFIG_FILE_NAME}"
 
-# 0 - ID
-# 1 - Ученик
-# 2 - email
-# 3 - File name
-# 4 - присъствия от 2 събития и 2 обучения
-# 5 - Крайни срокове общо
-# 6 - брой срещи
-INDEX_STUDENT_NAME = 1
-INDEX_STUDENT_EMAIL = 2
-INDEX_STUDENT_FILE_NAME = 3
+# These are the names of the XML tags
+SENDER_EMAIL = "sender_email"
+PASSWORD = "password"
+SUBJECT = "subject"
+BODY = "body"
+ATTACHMENTS_FOLDER_NAME = "attachments_folder_name"
+CSV_FILE_NAME = "file_name"
+CSV_RECEIVER_NAME_INDEX = "receiver_name_index"
+CSV_RECEIVER_EMAIL_INDEX = "receiver_email_index"
+CSV_ATTACHMENT_FILE_INDEX = "attachment_file_index"
+CSV_ATTACHMENT_FILE_EXTENSION = "attachment_file_extension"
 
 
 def get_config():
-    config = ConfigParser(allow_no_value=True)
-    config.read(CONFIG_FILE_PATH)
+    config = dict()
+    root_node = ET.parse(CONFIG_FILE_PATH)
+
+    # Login
+    login_node = root_node.find("login")
+    config[SENDER_EMAIL] = login_node.find(SENDER_EMAIL).text
+    config[PASSWORD] = login_node.find(PASSWORD).text
+
+    # Message
+    message_node = root_node.find("message")
+    config[SUBJECT] = message_node.find(SUBJECT).text
+    config[BODY] = message_node.find(BODY).text.strip()
+    config[ATTACHMENTS_FOLDER_NAME] = message_node.find(ATTACHMENTS_FOLDER_NAME).text
+
+    # CSV
+    csv_node = root_node.find("csv")
+    config[CSV_FILE_NAME] = csv_node.find(CSV_FILE_NAME).text
+    config[CSV_RECEIVER_NAME_INDEX] = int(csv_node.find(CSV_RECEIVER_NAME_INDEX).text)
+    config[CSV_RECEIVER_EMAIL_INDEX] = int(csv_node.find(CSV_RECEIVER_EMAIL_INDEX).text)
+    config[CSV_ATTACHMENT_FILE_INDEX] = int(csv_node.find(CSV_ATTACHMENT_FILE_INDEX).text)
+    config[CSV_ATTACHMENT_FILE_EXTENSION] = csv_node.find(CSV_ATTACHMENT_FILE_EXTENSION).text
     return config
 
 
-def create_message(sender_email: str, receiver_email: str, receiver_name: str, attachment_file_path: str):
+def get_csv_file_path(csv_file_name: str):
+    csv_file_path = f"{CURRENT_DIRECTORY}/{csv_file_name}"
+    return csv_file_path
+
+
+def get_attachments_folder_path(attachments_folder_name: str):
+    attachments_folder_path = f"{CURRENT_DIRECTORY}/{attachments_folder_name}"
+    return attachments_folder_path
+
+
+def create_message(
+        sender_email: str,
+        receiver_email: str,
+        receiver_name: str,
+        subject: str,
+        body: str,
+        attachment_file_path: str,
+        attachment_file_extension: str):
     message = MIMEMultipart("alternative")
-    message["Subject"] = "ABLE Mentor | Колко точки имаш? 🚀"
+    message["Subject"] = subject
     message["From"] = sender_email
     message["To"] = receiver_email
-    body_text = """\
-Здравей, ✌️
-
-Както споделихме в началото на програмата, всеки екип трупа точки за активно участие. 🎲 Измерваме го чрез три категории: присъствие на събития (общо 4), спазване на крайни срокове (общо 3) и брой срещи с ментора (без максимум). 🐝
-
-Като прикачен файл ще откриеш твоите точки за всяка категория към този момент. 🎉 И помни, никога не е късно да наваксаш! 😏
-
-Поздрави,
-Екипът на ABLE Mentor
-"""
 
     # Attach body
-    message.attach(MIMEText(body_text, "plain"))
+    message.attach(MIMEText(body, "plain"))
 
-    # Add attachment
-    file_name = f"{receiver_name}.pdf"
-    payload = MIMEBase("application", "octet-stream", Name=file_name)  # attachment as application/octet-stream
+    # Attach file
+    file_name = f"{receiver_name}{attachment_file_extension}"
+    payload = MIMEBase("application", "octet-stream", Name=file_name)
     with open(attachment_file_path, "rb") as binary_file:
         payload.set_payload(binary_file.read())
 
-    # Encode file in ASCII characters to send by email
     encoders.encode_base64(payload)
 
-    # Add header as key/value pair to attachment part
     payload.add_header('Content-Decomposition', 'attachment', filename=file_name)
     message.attach(payload)
     return message
@@ -74,23 +96,28 @@ def send_mails():
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
         config = get_config()
-        sender_email = config["General"]["sender_email"]
-        password = config["General"]["password"]
+        sender_email = config[SENDER_EMAIL]
+        password = config[PASSWORD]
         server.login(sender_email, password)
 
-        with open(MAIL_LIST_FILE_PATH, encoding="utf-8", mode="r") as fstream:
+        subject = config[SUBJECT]
+        body = config[BODY]
+
+        csv_file_path = get_csv_file_path(config[CSV_FILE_NAME])
+        with open(csv_file_path, encoding="utf-8", mode="r") as fstream:
             reader = csv.reader(fstream, delimiter=',', quotechar='"')
             for idx, row in enumerate(reader):
                 if idx == 0:
                     continue  # skip first row
+                receiver_email = row[config[CSV_RECEIVER_EMAIL_INDEX]]
+                receiver_name = row[config[CSV_RECEIVER_NAME_INDEX]]
+                attachment_file_name = row[config[CSV_ATTACHMENT_FILE_INDEX]]
+                attachment_file_extension = config[CSV_ATTACHMENT_FILE_EXTENSION]
+                attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}{attachment_file_extension}"
+                message = create_message(sender_email, receiver_email, receiver_name, subject,
+                                         body, attachment_file_path, attachment_file_extension)
 
-                receiver_email = row[INDEX_STUDENT_EMAIL]
-                receiver_name = row[INDEX_STUDENT_NAME]
-                attachment_file_name = row[INDEX_STUDENT_FILE_NAME]
-                attachment_file_path = f"{MAIL_ATTACHMENTS_DIRECTORY}/{attachment_file_name}.pdf"
-                message = create_message(sender_email, receiver_email, receiver_name, attachment_file_path)
-
-                print(f"Sending email to '{receiver_email}'. Attached file: '{receiver_name}.pdf'")
+                print(f"Sending email to '{receiver_email}'. Attached file: '{receiver_name}{attachment_file_extension}'")
                 server.sendmail(sender_email, receiver_email, message.as_string())
 
 
