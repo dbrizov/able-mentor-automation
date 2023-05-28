@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 import smtplib
 import ssl
@@ -23,6 +24,18 @@ CSV_FILE_NAME = "file_name"
 CSV_RECEIVER_NAME_INDEX = "receiver_name_index"
 CSV_RECEIVER_EMAIL_INDEX = "receiver_email_index"
 CSV_ATTACHMENT_FILE_INDEX = "attachment_file_index"
+
+logging.basicConfig(filename=f"{CURRENT_DIRECTORY}/mail_sender.log", filemode="w", level=logging.DEBUG)
+
+
+def log(message: str):
+    print(message)
+    logging.info(message)
+
+
+def log_error(message: str):
+    print(message)
+    logging.error(message)
 
 
 def get_config():
@@ -112,8 +125,11 @@ def send_mails():
                 attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}.pdf"
                 message = create_message(sender_email, receiver_email, receiver_name, subject, body, attachment_file_path)
 
-                print(f"Sending email to '{receiver_email}'. Attached file: '{receiver_name}.pdf'")
-                server.sendmail(sender_email, receiver_email, message.as_string())
+                try:
+                    log(f"Sending email to '{receiver_email}' | Attached file: '{receiver_name}.pdf'")
+                    server.sendmail(sender_email, receiver_email, message.as_string())
+                except smtplib.SMTPSenderRefused:
+                    log_error(f"Failed to send email to '{receiver_email}'")
 
 
 if __name__ == "__main__":
