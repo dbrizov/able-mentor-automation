@@ -9,6 +9,9 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+# For debugging purposes execute the following command and set DEBUG to True
+# $ python -m smtpd -c DebuggingServer -n localhost:1025
+DEBUG = False
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 CONFIG_FILE_NAME = "mail_sender.xml"
@@ -75,7 +78,6 @@ def get_attachments_folder_path(attachments_folder_name: str):
 def create_message(
         sender_email: str,
         receiver_email: str,
-        receiver_name: str,
         subject: str,
         body: str,
         attachment_file_path: str):
@@ -88,7 +90,7 @@ def create_message(
     message.attach(MIMEText(body, "plain"))
 
     # Attach file
-    file_name = f"{receiver_name}.pdf"
+    file_name = os.path.basename(attachment_file_path)
     payload = MIMEBase("application", "octet-stream", Name=file_name)
     with open(attachment_file_path, "rb") as binary_file:
         payload.set_payload(binary_file.read())
@@ -101,17 +103,21 @@ def create_message(
 
 
 def send_mails():
-    smtp_server = "smtp.gmail.com"
-    port = 465  # For SSL
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+    try:
+        smtp_server = "localhost" if DEBUG else "smtp.gmail.com"
+        port = 1025 if DEBUG else 587  # For starttls
+        server = smtplib.SMTP(smtp_server, port)
+        server.ehlo()
+        if not DEBUG:
+            context = ssl.create_default_context()
+            server.starttls(context=context)  # Secure the connection
+            server.ehlo()
+
         config = get_config()
         sender_email = config[SENDER_EMAIL]
-        password = config[PASSWORD]
-        server.login(sender_email, password)
-
-        subject = config[SUBJECT]
-        body = config[BODY]
+        if not DEBUG:
+            password = config[PASSWORD]
+            server.login(sender_email, password)
 
         csv_file_path = get_csv_file_path(config[CSV_FILE_NAME])
         with open(csv_file_path, encoding="utf-8", mode="r") as fstream:
@@ -119,17 +125,19 @@ def send_mails():
             for idx, row in enumerate(reader):
                 if idx == 0:
                     continue  # skip first row
+                subject = config[SUBJECT]
+                body = config[BODY]
                 receiver_email = row[config[CSV_RECEIVER_EMAIL_INDEX]]
-                receiver_name = row[config[CSV_RECEIVER_NAME_INDEX]]
                 attachment_file_name = row[config[CSV_ATTACHMENT_FILE_INDEX]]
-                attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}.pdf"
-                message = create_message(sender_email, receiver_email, receiver_name, subject, body, attachment_file_path)
+                attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}"
+                message = create_message(sender_email, receiver_email, subject, body, attachment_file_path)
 
-                try:
-                    log(f"Sending email to '{receiver_email}' | Attached file: '{receiver_name}.pdf'")
-                    server.sendmail(sender_email, receiver_email, message.as_string())
-                except smtplib.SMTPSenderRefused:
-                    log_error(f"Failed to send email to '{receiver_email}'")
+                log(f"Sending email to '{receiver_email}' | Attached file: '{attachment_file_name}'")
+                server.sendmail(sender_email, receiver_email, message.as_string())
+    except Exception as ex:
+        log_error(ex)
+    finally:
+        server.quit()
 
 
 if __name__ == "__main__":
