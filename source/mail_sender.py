@@ -3,15 +3,17 @@ import logging
 import os
 import smtplib
 import ssl
+import sys
 import xml.etree.ElementTree as ET
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# For debugging purposes execute the following command and set DEBUG to True
-# $ python -m smtpd -c DebuggingServer -n localhost:1025
-DEBUG = False
+# For debugging purposes you can test on a local server.
+# First you have to start an smtp server and then run the script with a '--debug' argument.
+# 1. $ python -m smtpd -c DebuggingServer -n localhost:1025
+# 2. $ python mail_sender.py --debug
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 CONFIG_FILE_NAME = "mail_sender.xml"
@@ -29,6 +31,10 @@ CSV_RECEIVER_EMAIL_INDEX = "receiver_email_index"
 CSV_ATTACHMENT_FILE_INDEX = "attachment_file_index"
 
 logging.basicConfig(filename=f"{CURRENT_DIRECTORY}/mail_sender.log", filemode="w", level=logging.DEBUG)
+
+
+def in_debug_mode():
+    return len(sys.argv) > 1 and sys.argv[1] == "--debug"
 
 
 def log(message: str):
@@ -106,18 +112,18 @@ def create_message(
 
 def send_mails():
     try:
-        smtp_server = "localhost" if DEBUG else "smtp.gmail.com"
-        port = 1025 if DEBUG else 587  # For starttls
+        smtp_server = "localhost" if in_debug_mode() else "smtp.gmail.com"
+        port = 1025 if in_debug_mode() else 587  # For starttls
         server = smtplib.SMTP(smtp_server, port)
         server.ehlo()
-        if not DEBUG:
+        if not in_debug_mode():
             context = ssl.create_default_context()
             server.starttls(context=context)  # Secure the connection
             server.ehlo()
 
         config = get_config()
         sender_email = config[SENDER_EMAIL]
-        if not DEBUG:
+        if not in_debug_mode():
             password = config[PASSWORD]
             server.login(sender_email, password)
 
