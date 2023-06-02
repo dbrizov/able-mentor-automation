@@ -90,15 +90,17 @@ def create_message(
     message.attach(MIMEText(body, "plain"))
 
     # Attach file
-    file_name = os.path.basename(attachment_file_path)
-    payload = MIMEBase("application", "octet-stream", Name=file_name)
-    with open(attachment_file_path, "rb") as binary_file:
-        payload.set_payload(binary_file.read())
+    if attachment_file_path is not None:
+        file_name = os.path.basename(attachment_file_path)
+        payload = MIMEBase("application", "octet-stream", Name=file_name)
+        with open(attachment_file_path, "rb") as binary_file:
+            payload.set_payload(binary_file.read())
 
-    encoders.encode_base64(payload)
+        encoders.encode_base64(payload)
 
-    payload.add_header('Content-Decomposition', 'attachment', filename=file_name)
-    message.attach(payload)
+        payload.add_header('Content-Decomposition', 'attachment', filename=file_name)
+        message.attach(payload)
+
     return message
 
 
@@ -128,8 +130,11 @@ def send_mails():
                 subject = config[SUBJECT]
                 body = config[BODY]
                 receiver_email = row[config[CSV_RECEIVER_EMAIL_INDEX]]
-                attachment_file_name = row[config[CSV_ATTACHMENT_FILE_INDEX]]
-                attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}"
+                attachment_file_name = None
+                attachment_file_path = None
+                if config[CSV_ATTACHMENT_FILE_INDEX] > -1 and row[config[CSV_ATTACHMENT_FILE_INDEX]]:
+                    attachment_file_name = row[config[CSV_ATTACHMENT_FILE_INDEX]]
+                    attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}"
                 message = create_message(sender_email, receiver_email, subject, body, attachment_file_path)
 
                 log(f"Sending email to '{receiver_email}' | Attached file: '{attachment_file_name}'")
