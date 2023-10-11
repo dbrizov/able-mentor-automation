@@ -1,6 +1,7 @@
 import os
 import csv
 import docx
+import math
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
@@ -8,37 +9,45 @@ OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles"
 REGISTER_FILE_NAME = "student_register.csv"
 REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
 
-STATUS = 0
-STUDENT_NAME = 1
-AGE = 2
-GENDER = 3
-SCHOOL_NAME = 4
-FORMAT = 5
-GRADE = 6
-SCHOOL_INTERESTS = 7
-NON_SCHOOL_INTERESTS = 8
-ENGLISH_LEVEL = 9
-SPORT = 10
-WHAT_TO_DO_AFTER_SCHOOL = 11
-INTERESTS = 12
-SKILLS_TO_IMPROVE = 13
-FREE_TIME_ACTIVITIES = 14
-DIFFICULT_SITUATION = 15
-IDEA_IN_ABLE_MENTOR = 16
-WANT_TO_CHANGE = 17
-HOURS_PER_WEEK = 18
-PROJECT_WITH_MENTOR = 19
-HEARD_OF_ABLE_MENTOR = 20
-STUDENT_NAME_COPY = 21
-MENTOR_NAME = 22
 
-column_titles = [None] * 23
+def get_column_index(column):
+    # 26 number system where [A...Z] is mapped to [1...26]
+    sum = 0
+    for idx in reversed(range(len(column))):
+        sum += (ord(column[idx]) - ord("A") + 1) * math.pow(26, len(column) - idx - 1)
+
+    return int(sum - 1)  # the index is the decimal value minus 1
+
+
+STATUS = get_column_index("C")
+STUDENT_NAME = get_column_index("W")
+AGE = get_column_index("AB")
+SCHOOL_NAME = get_column_index("AC")
+GRADE = get_column_index("AD")
+SCHOOL_INTERESTS = get_column_index("AE")
+NON_SCHOOL_INTERESTS = get_column_index("AF")
+ENGLISH_LEVEL = get_column_index("AG")
+SPORT = get_column_index("AH")
+WHAT_TO_DO_AFTER_SCHOOL = get_column_index("AI")
+INTERESTS = get_column_index("AJ")
+MENTOR_STUDIED = get_column_index("AK")
+MENTOR_EXPERIENCE = get_column_index("AL")
+SKILLS_TO_IMPROVE = get_column_index("AM")
+FREE_TIME_ACTIVITIES = get_column_index("AN")
+DIFFICULT_SITUATION = get_column_index("AO")
+IDEA_IN_ABLE_MENTOR = get_column_index("AP")
+WANT_TO_CHANGE = get_column_index("AQ")
+HOURS_PER_WEEK = get_column_index("AR")
+PROJECT_WITH_MENTOR = get_column_index("AS")
+HEARD_OF_ABLE_MENTOR = get_column_index("AT")
+STUDENT_NAME_COPY = get_column_index("BO")
+MENTOR_NAME = get_column_index("BP")
+
+column_titles = dict()
 column_titles[STATUS] = "Статус"
 column_titles[STUDENT_NAME] = "Ученик"
 column_titles[AGE] = "Възраст"
-column_titles[GENDER] = "Пол"
 column_titles[SCHOOL_NAME] = "Училище"
-column_titles[FORMAT] = "Населено място"
 column_titles[GRADE] = "Завършен клас"
 column_titles[SCHOOL_INTERESTS] = "Интереси, свързани с училище"
 column_titles[NON_SCHOOL_INTERESTS] = "Интереси извън училище"
@@ -46,7 +55,9 @@ column_titles[ENGLISH_LEVEL] = "Ниво на английски език"
 column_titles[SPORT] = "Спорт"
 column_titles[WHAT_TO_DO_AFTER_SCHOOL] = "Какво ще правя след гимназията:"
 column_titles[INTERESTS] = "В кои сфери имаш интерес да се развиваш и в кои по-слаб?"
-column_titles[SKILLS_TO_IMPROVE] = "Кои свои качества искаш да промениш/ подобриш?"
+column_titles[MENTOR_STUDIED] = "Какво си представяш, че е учил твоя ментор?"
+column_titles[MENTOR_EXPERIENCE] = "Ментор в каква професионална сфера би бил/а най-полезен/а за теб?"
+column_titles[SKILLS_TO_IMPROVE] = "Кои свои качества искаш да промениш/подобриш?"
 column_titles[FREE_TIME_ACTIVITIES] = "Как се забавляваш в свободното си време?"
 column_titles[DIFFICULT_SITUATION] = "Разкажи ни за трудна ситуация и как си се справил/а?"
 column_titles[IDEA_IN_ABLE_MENTOR] = "Каква идея искаш да осъществиш в рамките на ABLE Mentor?"
@@ -67,18 +78,20 @@ def try_create_doc(row_data, file_path):
 
     table = doc.add_table(rows=0, cols=2)
 
-    for id, entry in enumerate(row_data):
-        if (id == STATUS or
-            id == STUDENT_NAME or
-            id == GENDER or
-            id == FORMAT or
-            id == STUDENT_NAME_COPY or
-                id == MENTOR_NAME):
+    for idx in range(0, len(row_data)):
+        if (idx == STATUS or
+            idx == STUDENT_NAME or
+            idx == STUDENT_NAME_COPY or
+            idx == MENTOR_NAME or
+                idx not in column_titles):
             continue
 
+        if idx > MENTOR_NAME:
+            break
+
         table_row = table.add_row().cells
-        table_row[0].text = column_titles[id]
-        table_row[1].text = row_data[id]
+        table_row[0].text = column_titles[idx]
+        table_row[1].text = row_data[idx]
 
     doc.save(file_path)
     return True
@@ -96,7 +109,7 @@ def create_docs():
                 continue  # skip first row
 
             mentor_name = row[MENTOR_NAME].replace("/", "").strip()
-            file_path = f"{OUTPUT_DIRECTORY}/{mentor_name}.docx".replace("\\", "/")
+            file_path = f"{OUTPUT_DIRECTORY}/{mentor_name}_{idx}.docx".replace("\\", "/")
             try_create_doc(row, file_path)
 
 
