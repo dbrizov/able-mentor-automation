@@ -20,6 +20,7 @@ def get_column_index(column):
 
 
 STATUS = get_column_index("C")
+CONFIRMED = get_column_index("K")
 STUDENT_NAME = get_column_index("W")
 AGE = get_column_index("AB")
 SCHOOL_NAME = get_column_index("AC")
@@ -42,9 +43,11 @@ PROJECT_WITH_MENTOR = get_column_index("AS")
 HEARD_OF_ABLE_MENTOR = get_column_index("AT")
 STUDENT_NAME_COPY = get_column_index("BO")
 MENTOR_NAME = get_column_index("BP")
+COORDINATOR = get_column_index("CN")
 
 column_titles = dict()
 column_titles[STATUS] = "Статус"
+column_titles[CONFIRMED] = "Потвърдил участие"
 column_titles[STUDENT_NAME] = "Ученик"
 column_titles[AGE] = "Възраст"
 column_titles[SCHOOL_NAME] = "Училище"
@@ -67,10 +70,11 @@ column_titles[PROJECT_WITH_MENTOR] = "По какъв проект би рабо
 column_titles[HEARD_OF_ABLE_MENTOR] = "Научил/а за ABLE Mentor от?"
 column_titles[STUDENT_NAME_COPY] = "Ученик"
 column_titles[MENTOR_NAME] = "Ментор"
+column_titles[COORDINATOR] = "Координатор"
 
 
 def try_create_doc(row_data, file_path):
-    if row_data[STATUS] != "Активен":
+    if (row_data[STATUS] != "Активен" or row_data[COORDINATOR] == ""):
         return False
 
     doc = docx.Document()
@@ -80,6 +84,7 @@ def try_create_doc(row_data, file_path):
 
     for idx in range(0, len(row_data)):
         if (idx == STATUS or
+            idx == CONFIRMED or
             idx == STUDENT_NAME or
             idx == STUDENT_NAME_COPY or
             idx == MENTOR_NAME or
@@ -109,7 +114,8 @@ def create_docs():
                 continue  # skip first row
 
             mentor_name = row[MENTOR_NAME].replace("/", "").strip()
-            file_path = f"{OUTPUT_DIRECTORY}/{mentor_name}_{idx}.docx".replace("\\", "/")
+            coordinator = row[COORDINATOR].replace("/", "").strip()
+            file_path = f"{OUTPUT_DIRECTORY}/({coordinator}) {mentor_name}.docx".replace("\\", "/")
             try_create_doc(row, file_path)
 
 
