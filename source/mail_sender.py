@@ -12,7 +12,8 @@ from email.mime.multipart import MIMEMultipart
 
 # For debugging purposes you can test on a local server.
 # First you have to start an smtp server and then run the script with a '--debug' argument.
-# 1. $ python -m smtpd -c DebuggingServer -n localhost:1025
+# 1. $ python -m aiosmtpd -n (for python 3.12+)
+# 1. $ python -m smtpd -c DebuggingServer -n localhost:8025 (for python 3.11-)
 # 2. $ python mail_sender.py --debug
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
@@ -113,7 +114,7 @@ def create_message(
 def send_mails():
     try:
         smtp_server = "localhost" if in_debug_mode() else "smtp.gmail.com"
-        port = 1025 if in_debug_mode() else 587  # For starttls
+        port = 8025 if in_debug_mode() else 587  # For starttls
         server = smtplib.SMTP(smtp_server, port)
         server.ehlo()
         if not in_debug_mode():
