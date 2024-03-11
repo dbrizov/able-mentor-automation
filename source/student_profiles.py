@@ -20,40 +20,47 @@ def get_column_index(column):
 
 
 STATUS = get_column_index("C")
-CONFIRMED = get_column_index("K")
-STUDENT_NAME = get_column_index("W")
-AGE = get_column_index("AB")
-SCHOOL_NAME = get_column_index("AC")
-GRADE = get_column_index("AD")
-SCHOOL_INTERESTS = get_column_index("AE")
-NON_SCHOOL_INTERESTS = get_column_index("AF")
-ENGLISH_LEVEL = get_column_index("AG")
-SPORT = get_column_index("AH")
-WHAT_TO_DO_AFTER_SCHOOL = get_column_index("AI")
-INTERESTS = get_column_index("AJ")
-MENTOR_STUDIED = get_column_index("AK")
-MENTOR_EXPERIENCE = get_column_index("AL")
-SKILLS_TO_IMPROVE = get_column_index("AM")
-FREE_TIME_ACTIVITIES = get_column_index("AN")
-DIFFICULT_SITUATION = get_column_index("AO")
-IDEA_IN_ABLE_MENTOR = get_column_index("AP")
-WANT_TO_CHANGE = get_column_index("AQ")
-HOURS_PER_WEEK = get_column_index("AR")
-PROJECT_WITH_MENTOR = get_column_index("AS")
-HEARD_OF_ABLE_MENTOR = get_column_index("AT")
-STUDENT_NAME_COPY = get_column_index("BO")
-MENTOR_NAME = get_column_index("BP")
-COORDINATOR_NAME = get_column_index("CN")
+CONFIRMED = get_column_index("J")
+STUDENT_NAME = get_column_index("Z")
+AGE = get_column_index("AE")
+CITY = get_column_index("AF")
+SCHOOL_NAME = get_column_index("AG")
+GRADE = get_column_index("AH")
+SCHOOL_INTERESTS = get_column_index("AI")
+NON_SCHOOL_INTERESTS = get_column_index("AJ")
+SIMILAR_PROGRAMS = get_column_index("AK")
+NEED = get_column_index("AL")
+ENGLISH_LEVEL = get_column_index("AM")
+SPORT = get_column_index("AN")
+WHAT_TO_DO_AFTER_SCHOOL = get_column_index("AO")
+INTERESTS = get_column_index("AP")
+MENTOR_STUDIED = get_column_index("AQ")
+MENTOR_EXPERIENCE = get_column_index("AR")
+SKILLS_TO_IMPROVE = get_column_index("AS")
+FREE_TIME_ACTIVITIES = get_column_index("AT")
+DIFFICULT_SITUATION = get_column_index("AU")
+WHY_APPLY = get_column_index("AV")
+IDEA_IN_ABLE_MENTOR = get_column_index("AW")
+WANT_TO_CHANGE = get_column_index("AX")
+HOURS_PER_WEEK = get_column_index("AY")
+PROJECT_WITH_MENTOR = get_column_index("AZ")
+HEARD_OF_ABLE_MENTOR = get_column_index("BA")
+STUDENT_NAME_COPY = get_column_index("BR")
+MENTOR_NAME = get_column_index("BT")
+COORDINATOR_NAME = get_column_index("BX")
 
 column_titles = dict()
 column_titles[STATUS] = "Статус"
 column_titles[CONFIRMED] = "Потвърдил участие"
 column_titles[STUDENT_NAME] = "Ученик"
 column_titles[AGE] = "Възраст"
+column_titles[CITY] = "Населено място"
 column_titles[SCHOOL_NAME] = "Училище"
 column_titles[GRADE] = "Завършен клас"
 column_titles[SCHOOL_INTERESTS] = "Интереси, свързани с училище"
 column_titles[NON_SCHOOL_INTERESTS] = "Интереси извън училище"
+column_titles[SIMILAR_PROGRAMS] = "Участвал ли си в други сходни програми, завършил ли си ги и какво си взе от тях?"
+column_titles[NEED] = "ABLE Mentor е напълно безплатна програма с ограничен капацитет. Защо имаш нужда да участваш в нея?"
 column_titles[ENGLISH_LEVEL] = "Ниво на английски език"
 column_titles[SPORT] = "Спорт"
 column_titles[WHAT_TO_DO_AFTER_SCHOOL] = "Какво ще правя след гимназията:"
@@ -63,6 +70,7 @@ column_titles[MENTOR_EXPERIENCE] = "Ментор в каква професио�
 column_titles[SKILLS_TO_IMPROVE] = "Кои свои качества искаш да промениш/подобриш?"
 column_titles[FREE_TIME_ACTIVITIES] = "Как се забавляваш в свободното си време?"
 column_titles[DIFFICULT_SITUATION] = "Разкажи ни за трудна ситуация и как си се справил/а?"
+column_titles[WHY_APPLY] = "Защо кандидатстваш в програмата?"
 column_titles[IDEA_IN_ABLE_MENTOR] = "Каква идея искаш да осъществиш в рамките на ABLE Mentor?"
 column_titles[WANT_TO_CHANGE] = "Желая да променя..."
 column_titles[HOURS_PER_WEEK] = "По колко часа седмично би отделял/а на проекта?"
@@ -74,7 +82,7 @@ column_titles[COORDINATOR_NAME] = "Координатор"
 
 
 def try_create_doc(row_data, file_path):
-    if (row_data[STATUS] != "Активен" or row_data[COORDINATOR_NAME] == ""):
+    if row_data[STATUS] != "Активен":
         return False
 
     doc = docx.Document()
@@ -114,8 +122,11 @@ def create_docs():
                 continue  # skip first row
 
             mentor_name = row[MENTOR_NAME].replace("/", "").strip()
-            coordinator_name = row[COORDINATOR_NAME].replace("/", "").strip()
-            file_path = f"{OUTPUT_DIRECTORY}/({coordinator_name}) {mentor_name}.docx".replace("\\", "/")
+            # coordinator_name = row[COORDINATOR_NAME].replace("/", "").strip()
+
+            file_path = f"{OUTPUT_DIRECTORY}/{mentor_name}.docx".replace("\\", "/")
+            # file_path = f"{OUTPUT_DIRECTORY}/({coordinator_name}) {mentor_name}.docx".replace("\\", "/")
+
             try_create_doc(row, file_path)
 
 
