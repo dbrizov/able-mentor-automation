@@ -5,3 +5,4 @@
 - numpy==1.24.2
 - python-docx==0.8.11
 - aiosmtpd==1.4.4.post2
+- pandas==2.2.2
