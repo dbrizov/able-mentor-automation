@@ -142,6 +142,9 @@ def send_mails():
                 if config[CSV_ATTACHMENT_FILE_INDEX] > -1 and row[config[CSV_ATTACHMENT_FILE_INDEX]]:
                     attachment_file_name = row[config[CSV_ATTACHMENT_FILE_INDEX]]
                     attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}"
+                    if not os.path.exists(attachment_file_path):
+                        attachment_file_name = None
+                        attachment_file_path = None
                 message = create_message(sender_email, receiver_email, subject, body, attachment_file_path)
 
                 log(f"Sending email to '{receiver_email}' | Attached file: '{attachment_file_name}'")
