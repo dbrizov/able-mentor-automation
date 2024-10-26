@@ -6,14 +6,15 @@ import math
 # If your are using Visual Studio Code there may be a problem with importing the docx lib so you can run " pip install python-docx "
 
 # For the script to work you will need to download the current season's sheet table as a .csv file in the 'file' menu and put it into the same folder as this script.
-# Change the name of the .csv file to be student_register.csv 
+# Change the name of the .csv file to be student_register.csv
 # Then change the targeted table column names such as "O","AF" or "AL" in the functions down below to the coresponding column names in this season's register
 # After final a check that everything is right, you can run the script in any terminal or cmd and go to sleep
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles"
-REGISTER_FILE_NAME = "student_register.csv" 
+REGISTER_FILE_NAME = "student_register.csv"
 REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
+
 
 def get_column_index(column):
     # 26 number system where [A...Z] is mapped to [1...26]
@@ -22,6 +23,7 @@ def get_column_index(column):
         decimal_value += (ord(column[idx]) - ord("A") + 1) * math.pow(26, len(column) - idx - 1)
 
     return int(decimal_value - 1)  # the index is the decimal value minus 1
+
 
 CONFIRMED = get_column_index("O")
 STUDENT_NAME = get_column_index("AF")
@@ -75,6 +77,7 @@ column_titles = {
     HEARD_OF_ABLE_MENTOR: "Научил/а за ABLE Mentor от?"
 }
 
+
 def try_create_doc(row_data, file_path):
     if row_data[CONFIRMED] != "Да":
         return False
@@ -100,6 +103,7 @@ def try_create_doc(row_data, file_path):
     doc.save(file_path)
     return True
 
+
 def create_docs():
     if not os.path.exists(OUTPUT_DIRECTORY):
         os.mkdir(OUTPUT_DIRECTORY)
@@ -111,13 +115,14 @@ def create_docs():
 
         for idx, row in enumerate(reader):
             if idx == 0:
-                continue  
+                continue
 
             student_name = row[STUDENT_NAME]
             file_path = f"{OUTPUT_DIRECTORY}/{doc_counter}_{student_name}.docx"
 
             if try_create_doc(row, file_path):
                 doc_counter += 1  # Increment the counter only if the document is created successfully
+
 
 if __name__ == "__main__":
     create_docs()
