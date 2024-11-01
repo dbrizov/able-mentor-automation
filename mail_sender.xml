@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <login>
+        <sender_email></sender_email>
+        <password></password>
+    </login>
+    <message>
+        <subject></subject>
+        <body></body>
+        <attachments_folder_name>mail_attachments</attachments_folder_name>
+    </message>
+    <csv>
+        <file_name>mail_list.csv</file_name>
+        <receiver_name_index>1</receiver_name_index>
+        <receiver_email_index>2</receiver_email_index>
+        <attachment_file_index>3</attachment_file_index>
+    </csv>
+</config>
