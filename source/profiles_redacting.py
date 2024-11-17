@@ -2,7 +2,7 @@ import os
 import docx
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
-OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_redacted"  # The folder that stores the files (decide based on your need)
+OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_redacted"
 
 # Columns to remove (in the future you can change them just recplace with the title needed)
 titles_to_remove = {
