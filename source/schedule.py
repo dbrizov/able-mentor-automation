@@ -38,11 +38,13 @@ SEASON_TYPE_INDEX = get_column_index("K")
 
 
 class Slot:
-    def __init__(self, start_row: int, start_col: int, number: int, teams: list):
-        self.start_row = start_row
-        self.start_col = start_col
+    def __init__(self, hall_name: str, number: int, teams: list):
+        self.hall_name = hall_name
         self.number = number
         self.teams = teams
+
+    def __repr__(self):
+        return f"({self.hall_name}, {self.number}, {self.teams})"
 
 
 class Team:
@@ -100,9 +102,6 @@ def get_teams(csv_data):
 
 
 def create_slots(teams: list):
-    # time = pandas.to_datetime("11:00:00")  # str(time.time()
-    # minutes_to_add = pandas.Timedelta(minutes=5)
-    # time = time + minutes_to_add
     teams_by_coordinator = dict()
     for team in teams:
         coordinator_name = team.coordinator_name.lower()
@@ -110,42 +109,95 @@ def create_slots(teams: list):
             teams_by_coordinator[coordinator_name] = list()
         teams_by_coordinator[coordinator_name].append(team)
 
-    print(teams_by_coordinator.keys())
-
-
-def populate_sheet(start_row, start_col, worksheet, teams):
-    worksheet.write(start_row, start_col, "#")
-    worksheet.write(start_row, start_col + 1, "Ученик")
-    worksheet.write(start_row, start_col + 2, "Ментор")
-    worksheet.write(start_row, start_col + 3, "Координатор")
-
+    config = get_config()
+    halls_count = config[HALLS_COUNT]
+    halls_names = config[HALLS_NAMES]
+    coordinators_names = list(teams_by_coordinator.keys())
+    coordinators_count = len(coordinators_names)
     teams_count = len(teams)
-    for r in range(teams_count):
-        row = start_row + r + 1
-        team = teams[r]
-        tuple_length = len(team)
-        for c in range(tuple_length):
-            col = start_col + c
-            worksheet.write(row, col, team[c])
+    teams_count_per_hall = math.ceil(teams_count / halls_count)
+    teams_by_hall_name = dict()
+
+    last_coordinator_index = -1
+    for i_hall in range(0, halls_count):
+        teams_in_hall = list()
+        for i_coordinator in range(last_coordinator_index + 1, coordinators_count):
+            last_coordinator_index = i_coordinator
+            coordinator_name = coordinators_names[i_coordinator]
+            teams_in_hall += teams_by_coordinator[coordinator_name]
+            teams_in_hall_count = len(teams_in_hall)
+            if teams_in_hall_count >= teams_count_per_hall or i_coordinator == coordinators_count - 1:
+                hall_name = halls_names[i_hall]
+                teams_by_hall_name[hall_name] = teams_in_hall
+                break
+
+    slot_size = config[SLOT_SIZE]
+    slots_by_hall_name = dict()
+    for hall_name in halls_names:
+        slots_by_hall_name[hall_name] = list()
+        teams_in_hall = teams_by_hall_name[hall_name]
+        teams_in_hall_count = len(teams_in_hall)
+        teams_in_slot = list()
+        slot_number = 1
+        team_number = 1
+        for i_team in range(0, teams_in_hall_count):
+            team = teams_in_hall[i_team]
+            team.number = team_number
+            team_number += 1
+            teams_in_slot.append(team)
+            teams_in_slot_count = len(teams_in_slot)
+            if teams_in_slot_count == slot_size or i_team == teams_in_hall_count - 1:
+                slot = Slot(hall_name, slot_number, teams_in_slot)
+                slots_by_hall_name[hall_name].append(slot)
+                teams_in_slot = list()
+                slot_number += 1
+
+    return slots_by_hall_name
+
+
+def populate_sheet(worksheet, slots_by_hall_name: dict):
+    # time = pandas.to_datetime("11:00:00")  # str(time.time()
+    # minutes_to_add = pandas.Timedelta(minutes=5)
+    # time = time + minutes_to_add
+    config = get_config()
+    halls_names = config[HALLS_NAMES]
+    halls_count = config[HALLS_COUNT]
+    slot_size = config[SLOT_SIZE]
+
+    for i_hall in range(0, halls_count):
+        hall_name = halls_names[i_hall]
+        slots = slots_by_hall_name[hall_name]
+        slots_count = len(slots)
+        for i_slot in range(0, slots_count):
+            start_row = i_slot * (slot_size + 2)
+            start_col = i_hall * 5
+
+            worksheet.write(start_row, start_col, "#")
+            worksheet.write(start_row, start_col + 1, "Ученик")
+            worksheet.write(start_row, start_col + 2, "Ментор")
+            worksheet.write(start_row, start_col + 3, "Координатор")
+
+            teams = slots[i_slot].teams
+            teams_count = len(teams)
+            for i_team in range(teams_count):
+                team = teams[i_team]
+                worksheet.write(start_row + i_team + 1, start_col, team.number)
+                worksheet.write(start_row + i_team + 1, start_col + 1, team.student_name)
+                worksheet.write(start_row + i_team + 1, start_col + 2, team.mentor_name)
+                worksheet.write(start_row + i_team + 1, start_col + 3, team.coordinator_name)
 
 
 def create_schedule():
     csv_data = pandas.read_csv(TEAMS_FILE_PATH)
     teams = get_teams(csv_data)
+    slots_by_hall_name = create_slots(teams)
+    workbook = xlsxwriter.Workbook(SCHEDULE_FILE_NAME)
+    worksheet = workbook.add_worksheet("Schedule")
 
-    create_slots(teams)
+    populate_sheet(worksheet, slots_by_hall_name)
 
-    # workbook = xlsxwriter.Workbook(SCHEDULE_FILE_NAME)
-    # worksheet = workbook.add_worksheet("Schedule")
-
-    # create_slot(0, 0, worksheet, teams[0:10])
-    # create_slot(12, 0, worksheet, teams[11:21])
-    # create_slot(24, 0, worksheet, teams[22:32])
-    # create_slot(36, 0, worksheet, teams[33:43])
-    # create_slot(48, 0, worksheet, teams[44:54])
-
-    # worksheet.autofit()
-    # workbook.close()
+    worksheet.autofit()
+    workbook.close()
 
 
 if __name__ == "__main__":
