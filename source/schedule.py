@@ -3,6 +3,7 @@ import os
 import pandas
 import xlsxwriter
 import configparser
+import random
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
@@ -113,6 +114,7 @@ def create_slots(teams: list):
     halls_count = config[HALLS_COUNT]
     halls_names = config[HALLS_NAMES]
     coordinators_names = list(teams_by_coordinator.keys())
+    random.shuffle(coordinators_names)
     coordinators_count = len(coordinators_names)
     teams_count = len(teams)
     teams_count_per_hall = math.ceil(teams_count / halls_count)
@@ -127,6 +129,7 @@ def create_slots(teams: list):
             teams_in_hall += teams_by_coordinator[coordinator_name]
             teams_in_hall_count = len(teams_in_hall)
             if teams_in_hall_count >= teams_count_per_hall or i_coordinator == coordinators_count - 1:
+                random.shuffle(teams_in_hall)
                 hall_name = halls_names[i_hall]
                 teams_by_hall_name[hall_name] = teams_in_hall
                 break
@@ -188,6 +191,9 @@ def populate_sheet(worksheet, slots_by_hall_name: dict):
 
 
 def create_schedule():
+    config = get_config()
+    random.seed(config[RANDOM_SEED])
+
     csv_data = pandas.read_csv(TEAMS_FILE_PATH)
     teams = get_teams(csv_data)
     slots_by_hall_name = create_slots(teams)
