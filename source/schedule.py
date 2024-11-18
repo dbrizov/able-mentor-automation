@@ -172,14 +172,16 @@ def populate_sheet(worksheet, slots_by_hall_name: dict):
         slots = slots_by_hall_name[hall_name]
         slots_count = len(slots)
         for i_slot in range(0, slots_count):
-            start_row = i_slot * (slot_size + 2)
-            start_col = i_hall * 5
+            start_row = i_slot * (slot_size + 2)  # Plus 2 because we need 2 rows for the header and footer of each slot
+            start_col = i_hall * 5  # Multiply by 5, because each slot is wide 4 columns. This makes 1 empty column to the right of each slot
 
+            # Write header
             worksheet.write(start_row, start_col, "#")
             worksheet.write(start_row, start_col + 1, "Ученик")
             worksheet.write(start_row, start_col + 2, "Ментор")
             worksheet.write(start_row, start_col + 3, "Координатор")
 
+            # Write teams
             teams = slots[i_slot].teams
             teams_count = len(teams)
             for i_team in range(teams_count):
