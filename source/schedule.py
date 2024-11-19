@@ -13,11 +13,13 @@ TEAMS_FILE_NAME = "teams.csv"
 TEAMS_FILE_PATH = f"{CURRENT_DIRECTORY}/{TEAMS_FILE_NAME}"
 SCHEDULE_FILE_NAME = "schedule_{0}.xlsx"
 
-# Config section
-SEASON_SOFIA = "Sofia"
-SEASON_ONLINE = "Online"
+# Config sections
+GENERAL = "General"
+SOFIA = "Sofia"
+ONLINE = "Online"
 
 # Config keys
+ROW_HEIGHT = "row_height"
 SEASON_TYPE = "season_type"
 SLOT_SIZE = "slot_size"
 HALLS_COUNT = "halls_count"
@@ -66,8 +68,10 @@ class Team:
 def get_config(season: str):
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read(CONFIG_FILE_PATH, encoding="utf-8")
+    general_section = parser[GENERAL]
     config_section = parser[season]
     config = {
+        ROW_HEIGHT: int(general_section[ROW_HEIGHT]),
         SEASON_TYPE: config_section[SEASON_TYPE],
         SLOT_SIZE: int(config_section[SLOT_SIZE]),
         HALLS_COUNT: int(config_section[HALLS_COUNT]),
@@ -162,13 +166,29 @@ def create_slots(config, teams: list):
     return slots_by_hall_name
 
 
-def populate_sheet(config, worksheet, slots_by_hall_name: dict):
+def populate_sheet(config, workbook, worksheet, slots_by_hall_name: dict):
     # time = pandas.to_datetime("11:00:00")  # str(time.time()
     # minutes_to_add = pandas.Timedelta(minutes=5)
     # time = time + minutes_to_add
+    bold_format = workbook.add_format({
+        "border": 1,
+        "border_color": "black",
+        "align": "center",
+        "valign": "vcenter",
+        "bold": True,
+    })
+
+    normal_format = workbook.add_format({
+        "border": 1,
+        "border_color": "black",
+        "align": "center",
+        "valign": "vcenter"
+    })
+
     halls_names = config[HALLS_NAMES]
     halls_count = config[HALLS_COUNT]
     slot_size = config[SLOT_SIZE]
+    row_height = config[ROW_HEIGHT]
 
     for i_hall in range(0, halls_count):
         hall_name = halls_names[i_hall]
@@ -179,20 +199,23 @@ def populate_sheet(config, worksheet, slots_by_hall_name: dict):
             start_col = i_hall * 5  # Multiply by 5, because each slot is wide 4 columns. This makes 1 empty column to the right of each slot
 
             # Write header
-            worksheet.write(start_row, start_col, "#")
-            worksheet.write(start_row, start_col + 1, "Ученик")
-            worksheet.write(start_row, start_col + 2, "Ментор")
-            worksheet.write(start_row, start_col + 3, "Координатор")
+            worksheet.set_row(start_row, row_height)
+            worksheet.write(start_row, start_col, "#", bold_format)
+            worksheet.write(start_row, start_col + 1, "Ученик", bold_format)
+            worksheet.write(start_row, start_col + 2, "Ментор", bold_format)
+            worksheet.write(start_row, start_col + 3, "Координатор", bold_format)
 
             # Write teams
             teams = slots[i_slot].teams
             teams_count = len(teams)
             for i_team in range(teams_count):
                 team = teams[i_team]
-                worksheet.write(start_row + i_team + 1, start_col, team.number)
-                worksheet.write(start_row + i_team + 1, start_col + 1, team.student_name)
-                worksheet.write(start_row + i_team + 1, start_col + 2, team.mentor_name)
-                worksheet.write(start_row + i_team + 1, start_col + 3, team.coordinator_name)
+                row = start_row + i_team + 1
+                worksheet.set_row(row, row_height)
+                worksheet.write(start_row + i_team + 1, start_col, team.number, normal_format)
+                worksheet.write(start_row + i_team + 1, start_col + 1, team.student_name, normal_format)
+                worksheet.write(start_row + i_team + 1, start_col + 2, team.mentor_name, normal_format)
+                worksheet.write(start_row + i_team + 1, start_col + 3, team.coordinator_name, normal_format)
 
 
 def create_schedule(season: str):
@@ -205,12 +228,12 @@ def create_schedule(season: str):
     workbook = xlsxwriter.Workbook(SCHEDULE_FILE_NAME.format(season).lower())
     worksheet = workbook.add_worksheet("Schedule")
 
-    populate_sheet(config, worksheet, slots_by_hall_name)
+    populate_sheet(config, workbook, worksheet, slots_by_hall_name)
 
     worksheet.autofit()
     workbook.close()
 
 
 if __name__ == "__main__":
-    create_schedule(SEASON_SOFIA)
-    create_schedule(SEASON_ONLINE)
+    create_schedule(SOFIA)
+    create_schedule(ONLINE)
