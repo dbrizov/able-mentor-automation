@@ -170,19 +170,19 @@ def populate_sheet(config, workbook, worksheet, slots_by_hall_name: dict):
     # time = pandas.to_datetime("11:00:00")  # str(time.time()
     # minutes_to_add = pandas.Timedelta(minutes=5)
     # time = time + minutes_to_add
+    normal_format = workbook.add_format({
+        "border": 1,
+        "border_color": "black",
+        "align": "center",
+        "valign": "vcenter"
+    })
+
     bold_format = workbook.add_format({
         "border": 1,
         "border_color": "black",
         "align": "center",
         "valign": "vcenter",
         "bold": True,
-    })
-
-    normal_format = workbook.add_format({
-        "border": 1,
-        "border_color": "black",
-        "align": "center",
-        "valign": "vcenter"
     })
 
     halls_names = config[HALLS_NAMES]
