@@ -11,9 +11,13 @@ CONFIG_FILE_NAME = "schedule.ini"
 CONFIG_FILE_PATH = f"{CURRENT_DIRECTORY}/{CONFIG_FILE_NAME}"
 TEAMS_FILE_NAME = "teams.csv"
 TEAMS_FILE_PATH = f"{CURRENT_DIRECTORY}/{TEAMS_FILE_NAME}"
-SCHEDULE_FILE_NAME = "schedule.xlsx"
+SCHEDULE_FILE_NAME = "schedule_{0}.xlsx"
 
-# The keys in the config file
+# Config section
+SEASON_SOFIA = "Sofia"
+SEASON_ONLINE = "Online"
+
+# Config keys
 SEASON_TYPE = "season_type"
 SLOT_SIZE = "slot_size"
 HALLS_COUNT = "halls_count"
@@ -35,7 +39,7 @@ ACTIVE_COLUMN_INDEX = get_column_index("A")
 STUDENT_COLUMN_INDEX = get_column_index("C")
 MENTOR_COLUMN_INDEX = get_column_index("H")
 COORDINATOR_COLUMN_INDEX = get_column_index("B")
-SEASON_TYPE_INDEX = get_column_index("K")
+SEASON_TYPE_COLUMN_INDEX = get_column_index("K")
 
 
 class Slot:
@@ -59,16 +63,16 @@ class Team:
         return f"({self.number}, {self.student_name}, {self.mentor_name}, {self.coordinator_name})"
 
 
-def get_config():
+def get_config(season: str):
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read(CONFIG_FILE_PATH, encoding="utf-8")
-    general_section = parser["General"]
+    config_section = parser[season]
     config = {
-        SEASON_TYPE: general_section[SEASON_TYPE],
-        SLOT_SIZE: int(general_section[SLOT_SIZE]),
-        HALLS_COUNT: int(general_section[HALLS_COUNT]),
-        HALLS_NAMES: [name.strip() for name in general_section[HALLS_NAMES].split(",")],
-        RANDOM_SEED: int(general_section[RANDOM_SEED])
+        SEASON_TYPE: config_section[SEASON_TYPE],
+        SLOT_SIZE: int(config_section[SLOT_SIZE]),
+        HALLS_COUNT: int(config_section[HALLS_COUNT]),
+        HALLS_NAMES: [name.strip() for name in config_section[HALLS_NAMES].split(",")],
+        RANDOM_SEED: int(config_section[RANDOM_SEED])
     }
 
     return config
@@ -85,13 +89,12 @@ def get_column_data(csv_data, column_index: int):
     return column_data
 
 
-def get_teams(csv_data):
-    config = get_config()
+def get_teams(config, csv_data):
     active = get_column_data(csv_data, ACTIVE_COLUMN_INDEX)
     students = get_column_data(csv_data, STUDENT_COLUMN_INDEX)
     mentors = get_column_data(csv_data, MENTOR_COLUMN_INDEX)
     coordinators = get_column_data(csv_data, COORDINATOR_COLUMN_INDEX)
-    season_types = get_column_data(csv_data, SEASON_TYPE_INDEX)
+    season_types = get_column_data(csv_data, SEASON_TYPE_COLUMN_INDEX)
 
     teams = list()
     team_number = 0
@@ -102,7 +105,7 @@ def get_teams(csv_data):
     return teams
 
 
-def create_slots(teams: list):
+def create_slots(config, teams: list):
     teams_by_coordinator = dict()
     for team in teams:
         coordinator_name = team.coordinator_name.lower()
@@ -110,7 +113,6 @@ def create_slots(teams: list):
             teams_by_coordinator[coordinator_name] = list()
         teams_by_coordinator[coordinator_name].append(team)
 
-    config = get_config()
     halls_count = config[HALLS_COUNT]
     halls_names = config[HALLS_NAMES]
     coordinators_names = list(teams_by_coordinator.keys())
@@ -149,7 +151,9 @@ def create_slots(teams: list):
             team_number += 1
             teams_in_slot.append(team)
             teams_in_slot_count = len(teams_in_slot)
-            if teams_in_slot_count == slot_size or i_team == teams_in_hall_count - 1:
+            is_slot_full = (teams_in_slot_count == slot_size)
+            is_last_team = (i_team == teams_in_hall_count - 1)
+            if is_slot_full or is_last_team:
                 slot = Slot(hall_name, slot_number, teams_in_slot)
                 slots_by_hall_name[hall_name].append(slot)
                 teams_in_slot = list()
@@ -158,11 +162,10 @@ def create_slots(teams: list):
     return slots_by_hall_name
 
 
-def populate_sheet(worksheet, slots_by_hall_name: dict):
+def populate_sheet(config, worksheet, slots_by_hall_name: dict):
     # time = pandas.to_datetime("11:00:00")  # str(time.time()
     # minutes_to_add = pandas.Timedelta(minutes=5)
     # time = time + minutes_to_add
-    config = get_config()
     halls_names = config[HALLS_NAMES]
     halls_count = config[HALLS_COUNT]
     slot_size = config[SLOT_SIZE]
@@ -192,21 +195,22 @@ def populate_sheet(worksheet, slots_by_hall_name: dict):
                 worksheet.write(start_row + i_team + 1, start_col + 3, team.coordinator_name)
 
 
-def create_schedule():
-    config = get_config()
+def create_schedule(season: str):
+    config = get_config(season)
     random.seed(config[RANDOM_SEED])
 
     csv_data = pandas.read_csv(TEAMS_FILE_PATH)
-    teams = get_teams(csv_data)
-    slots_by_hall_name = create_slots(teams)
-    workbook = xlsxwriter.Workbook(SCHEDULE_FILE_NAME)
+    teams = get_teams(config, csv_data)
+    slots_by_hall_name = create_slots(config, teams)
+    workbook = xlsxwriter.Workbook(SCHEDULE_FILE_NAME.format(season).lower())
     worksheet = workbook.add_worksheet("Schedule")
 
-    populate_sheet(worksheet, slots_by_hall_name)
+    populate_sheet(config, worksheet, slots_by_hall_name)
 
     worksheet.autofit()
     workbook.close()
 
 
 if __name__ == "__main__":
-    create_schedule()
+    create_schedule(SEASON_SOFIA)
+    create_schedule(SEASON_ONLINE)
