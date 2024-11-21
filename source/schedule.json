@@ -1,0 +1,29 @@
+{
+    "sofia": {
+        "season_type": "София",
+        "slot_size": 16,
+        "halls": [
+            {
+                "name": "CITY",
+                "coordinators": []
+            },
+            {
+                "name": "NEW YORK",
+                "coordinators": []
+            }
+        ],
+        "random_seed": 1
+    },
+    "online": {
+        "season_type": "онлайн",
+        "slot_size": 12,
+        "halls": [
+            {
+                "name": "ONLINE",
+                "coordinators": []
+            }
+        ],
+        "random_seed": 0
+    },
+    "row_height": 25
+}

@@ -2,29 +2,27 @@ import math
 import os
 import pandas
 import xlsxwriter
-import configparser
+import json
 import random
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
-CONFIG_FILE_NAME = "schedule.ini"
+CONFIG_FILE_NAME = "schedule.json"
 CONFIG_FILE_PATH = f"{CURRENT_DIRECTORY}/{CONFIG_FILE_NAME}"
 TEAMS_FILE_NAME = "teams.csv"
 TEAMS_FILE_PATH = f"{CURRENT_DIRECTORY}/{TEAMS_FILE_NAME}"
 SCHEDULE_FILE_NAME = "schedule_{0}.xlsx"
 
-# Config sections
-GENERAL = "General"
-SOFIA = "Sofia"
-ONLINE = "Online"
-
 # Config keys
-ROW_HEIGHT = "row_height"
+SOFIA = "sofia"
+ONLINE = "online"
 SEASON_TYPE = "season_type"
 SLOT_SIZE = "slot_size"
-HALLS_COUNT = "halls_count"
-HALLS_NAMES = "halls_names"
+HALLS = "halls"
+NAME = "name"
+COORDINATORS = "coordinators"
 RANDOM_SEED = "random_seed"
+ROW_HEIGHT = "row_height"
 
 
 def get_column_index(column):
@@ -66,20 +64,17 @@ class Team:
 
 
 def get_config(season: str):
-    parser = configparser.ConfigParser(allow_no_value=True)
-    parser.read(CONFIG_FILE_PATH, encoding="utf-8")
-    general_section = parser[GENERAL]
-    config_section = parser[season]
-    config = {
-        ROW_HEIGHT: int(general_section[ROW_HEIGHT]),
-        SEASON_TYPE: config_section[SEASON_TYPE],
-        SLOT_SIZE: int(config_section[SLOT_SIZE]),
-        HALLS_COUNT: int(config_section[HALLS_COUNT]),
-        HALLS_NAMES: [name.strip() for name in config_section[HALLS_NAMES].split(",")],
-        RANDOM_SEED: int(config_section[RANDOM_SEED])
-    }
+    with open(CONFIG_FILE_PATH, mode="r", encoding="utf-8") as file_stream:
+        js = json.load(file_stream)
+        config = {
+            SEASON_TYPE: js[season][SEASON_TYPE],
+            SLOT_SIZE: js[season][SLOT_SIZE],
+            HALLS: js[season][HALLS],
+            RANDOM_SEED: js[season][RANDOM_SEED],
+            ROW_HEIGHT: js[ROW_HEIGHT],
+        }
 
-    return config
+        return config
 
 
 def get_column_name(csv_data, column_index: int):
@@ -110,6 +105,7 @@ def get_teams(config, csv_data):
 
 
 def create_slots(config, teams: list):
+    # Group teams by coordinator
     teams_by_coordinator = dict()
     for team in teams:
         coordinator_name = team.coordinator_name.lower()
@@ -117,32 +113,48 @@ def create_slots(config, teams: list):
             teams_by_coordinator[coordinator_name] = list()
         teams_by_coordinator[coordinator_name].append(team)
 
-    halls_count = config[HALLS_COUNT]
-    halls_names = config[HALLS_NAMES]
+    # Move the halls' specified coordinators to the end of the coordinators' list
+    halls = config[HALLS]
     coordinators_names = list(teams_by_coordinator.keys())
     random.shuffle(coordinators_names)
-    coordinators_count = len(coordinators_names)
-    teams_count = len(teams)
-    teams_count_per_hall = math.ceil(teams_count / halls_count)
-    teams_by_hall_name = dict()
+    for hall in halls:
+        coordinators = [x.lower() for x in hall[COORDINATORS]]
+        for coordinator in coordinators:
+            if coordinator in coordinators_names:
+                coordinators_names.remove(coordinator)
+                coordinators_names.append(coordinator)
 
+    # Group teams by hall
     last_coordinator_index = -1
-    for i_hall in range(0, halls_count):
+    coordinators_count = len(coordinators_names)
+    teams_by_hall_name = dict()
+    for hall in halls:
+        # Move this hall's specified coordinators to the start of the coordinators' list
+        # This will ensure that these coordinators will belong to this hall
+        coordinators = [x.lower() for x in hall[COORDINATORS]]
+        for coordinator in coordinators:
+            if coordinator in coordinators_names:
+                coordinators_names.remove(coordinator)
+                coordinators_names.insert(last_coordinator_index + 1, coordinator)
+
         teams_in_hall = list()
         for i_coordinator in range(last_coordinator_index + 1, coordinators_count):
             last_coordinator_index = i_coordinator
             coordinator_name = coordinators_names[i_coordinator]
             teams_in_hall += teams_by_coordinator[coordinator_name]
             teams_in_hall_count = len(teams_in_hall)
+            teams_count_per_hall = math.ceil(len(teams) / len(halls))
             if teams_in_hall_count >= teams_count_per_hall or i_coordinator == coordinators_count - 1:
                 random.shuffle(teams_in_hall)
-                hall_name = halls_names[i_hall]
+                hall_name = hall[NAME]
                 teams_by_hall_name[hall_name] = teams_in_hall
                 break
 
+    # Create slots by hall
     slot_size = config[SLOT_SIZE]
     slots_by_hall_name = dict()
-    for hall_name in halls_names:
+    for hall in halls:
+        hall_name = hall[NAME]
         slots_by_hall_name[hall_name] = list()
         teams_in_hall = teams_by_hall_name[hall_name]
         teams_in_hall_count = len(teams_in_hall)
@@ -185,13 +197,13 @@ def populate_sheet(config, workbook, worksheet, slots_by_hall_name: dict):
         "bold": True,
     })
 
-    halls_names = config[HALLS_NAMES]
-    halls_count = config[HALLS_COUNT]
+    halls = config[HALLS]
+    halls_count = len(halls)
     slot_size = config[SLOT_SIZE]
     row_height = config[ROW_HEIGHT]
 
     for i_hall in range(0, halls_count):
-        hall_name = halls_names[i_hall]
+        hall_name = halls[i_hall][NAME]
         slots = slots_by_hall_name[hall_name]
         slots_count = len(slots)
         for i_slot in range(0, slots_count):
