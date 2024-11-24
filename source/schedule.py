@@ -16,6 +16,19 @@ TEAMS_FILE_PATH = f"{CURRENT_DIRECTORY}/{TEAMS_FILE_NAME}"
 SCHEDULE_FILE_NAME = "schedule_{0}.xlsx"
 
 # Config keys
+CSV = "csv"
+ACTIVE_COLUMN = "active_column"
+STUDENT_COLUMN = "student_column"
+MENTOR_COLUMN = "mentor_column"
+COORDINATOR_COLUMN = "coordinator_column"
+SEASON_TYPE_COLUMN = "season_type_column"
+
+FORMAT = "format"
+ROW_HEIGHT = "row_height"
+COLUMN_WIDTH = "column_width"
+ROWS_BETWEEN_SLOTS = "rows_between_slots"
+COLUMNS_BETWEEN_SLOTS = "columns_between_slots"
+
 SOFIA = "sofia"
 ONLINE = "online"
 SEASON_TYPE = "season_type"
@@ -24,10 +37,6 @@ HALLS = "halls"
 NAME = "name"
 COORDINATORS = "coordinators"
 RANDOM_SEED = "random_seed"
-ROW_HEIGHT = "row_height"
-COLUMN_WIDTH = "column_width"
-ROWS_BETWEEN_SLOTS = "rows_between_slots"
-COLUMNS_BETWEEN_SLOTS = "columns_between_slots"
 
 
 def get_column_index(column):
@@ -37,14 +46,6 @@ def get_column_index(column):
         decimal_value += (ord(column[idx]) - ord("A") + 1) * math.pow(26, len(column) - idx - 1)
 
     return int(decimal_value - 1)  # the index is the decimal value minus 1
-
-
-# The column indices in the CSV file
-ACTIVE_COLUMN_INDEX = get_column_index("A")
-STUDENT_COLUMN_INDEX = get_column_index("C")
-MENTOR_COLUMN_INDEX = get_column_index("H")
-COORDINATOR_COLUMN_INDEX = get_column_index("B")
-SEASON_TYPE_COLUMN_INDEX = get_column_index("K")
 
 
 class Slot:
@@ -72,14 +73,22 @@ def get_config(season: str):
     with open(CONFIG_FILE_PATH, mode="r", encoding="utf-8") as file_stream:
         js = json.load(file_stream)
         config = {
+            # csv
+            ACTIVE_COLUMN: js[CSV][ACTIVE_COLUMN],
+            STUDENT_COLUMN: js[CSV][STUDENT_COLUMN],
+            MENTOR_COLUMN: js[CSV][MENTOR_COLUMN],
+            COORDINATOR_COLUMN: js[CSV][COORDINATOR_COLUMN],
+            SEASON_TYPE_COLUMN: js[CSV][SEASON_TYPE_COLUMN],
+            # format
+            ROW_HEIGHT: js[FORMAT][ROW_HEIGHT],
+            COLUMN_WIDTH: js[FORMAT][COLUMN_WIDTH],
+            ROWS_BETWEEN_SLOTS: js[FORMAT][ROWS_BETWEEN_SLOTS],
+            COLUMNS_BETWEEN_SLOTS: js[FORMAT][COLUMNS_BETWEEN_SLOTS],
+            # season
             SEASON_TYPE: js[season][SEASON_TYPE],
             SLOT_SIZE: js[season][SLOT_SIZE],
             HALLS: js[season][HALLS],
             RANDOM_SEED: js[season][RANDOM_SEED],
-            ROW_HEIGHT: js[ROW_HEIGHT],
-            COLUMN_WIDTH: js[COLUMN_WIDTH],
-            ROWS_BETWEEN_SLOTS: js[ROWS_BETWEEN_SLOTS],
-            COLUMNS_BETWEEN_SLOTS: js[COLUMNS_BETWEEN_SLOTS]
         }
 
         return config
@@ -97,11 +106,17 @@ def get_column_data(csv_data, column_index: int):
 
 
 def get_teams(config, csv_data):
-    active = get_column_data(csv_data, ACTIVE_COLUMN_INDEX)
-    students = get_column_data(csv_data, STUDENT_COLUMN_INDEX)
-    mentors = get_column_data(csv_data, MENTOR_COLUMN_INDEX)
-    coordinators = get_column_data(csv_data, COORDINATOR_COLUMN_INDEX)
-    season_types = get_column_data(csv_data, SEASON_TYPE_COLUMN_INDEX)
+    active_column_index = get_column_index(config[ACTIVE_COLUMN])
+    student_column_index = get_column_index(config[STUDENT_COLUMN])
+    mentor_column_index = get_column_index(config[MENTOR_COLUMN])
+    coordinator_column_index = get_column_index(config[COORDINATOR_COLUMN])
+    season_type_column_index = get_column_index(config[SEASON_TYPE_COLUMN])
+
+    active = get_column_data(csv_data, active_column_index)
+    students = get_column_data(csv_data, student_column_index)
+    mentors = get_column_data(csv_data, mentor_column_index)
+    coordinators = get_column_data(csv_data, coordinator_column_index)
+    season_types = get_column_data(csv_data, season_type_column_index)
 
     teams = list()
     team_number = 0
