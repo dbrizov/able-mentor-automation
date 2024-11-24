@@ -1,9 +1,11 @@
 import math
 import os
 import pandas
-import xlsxwriter
 import json
 import random
+import xlsxwriter
+from xlsxwriter.workbook import Workbook
+from xlsxwriter.worksheet import Worksheet
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
@@ -23,6 +25,9 @@ NAME = "name"
 COORDINATORS = "coordinators"
 RANDOM_SEED = "random_seed"
 ROW_HEIGHT = "row_height"
+COLUMN_WIDTH = "column_width"
+ROWS_BETWEEN_SLOTS = "rows_between_slots"
+COLUMNS_BETWEEN_SLOTS = "columns_between_slots"
 
 
 def get_column_index(column):
@@ -72,6 +77,9 @@ def get_config(season: str):
             HALLS: js[season][HALLS],
             RANDOM_SEED: js[season][RANDOM_SEED],
             ROW_HEIGHT: js[ROW_HEIGHT],
+            COLUMN_WIDTH: js[COLUMN_WIDTH],
+            ROWS_BETWEEN_SLOTS: js[ROWS_BETWEEN_SLOTS],
+            COLUMNS_BETWEEN_SLOTS: js[COLUMNS_BETWEEN_SLOTS]
         }
 
         return config
@@ -178,15 +186,16 @@ def create_slots(config, teams: list):
     return slots_by_hall_name
 
 
-def populate_sheet(config, workbook, worksheet, slots_by_hall_name: dict):
-    # time = pandas.to_datetime("11:00:00")  # str(time.time()
+def populate_sheet(config, workbook: Workbook, worksheet: Worksheet, slots_by_hall_name: dict):
+    # time = pandas.to_datetime("11:00:00")  # str(time.time())
     # minutes_to_add = pandas.Timedelta(minutes=5)
     # time = time + minutes_to_add
     normal_format = workbook.add_format({
         "border": 1,
         "border_color": "black",
         "align": "center",
-        "valign": "vcenter"
+        "valign": "vcenter",
+        "text_wrap": True
     })
 
     bold_format = workbook.add_format({
@@ -194,40 +203,60 @@ def populate_sheet(config, workbook, worksheet, slots_by_hall_name: dict):
         "border_color": "black",
         "align": "center",
         "valign": "vcenter",
+        "text_wrap": True,
+        "bold": True
+    })
+
+    header_format = workbook.add_format({
+        "border": 1,
+        "border_color": "black",
+        "align": "center",
+        "valign": "vcenter",
+        "text_wrap": True,
         "bold": True,
+        "bg_color": "#DCE5F2"
     })
 
     halls = config[HALLS]
     halls_count = len(halls)
     slot_size = config[SLOT_SIZE]
+    slot_header_rows = 2
+    slot_columns = 4
+    rows_between_slots = config[ROWS_BETWEEN_SLOTS]
+    columns_between_slots = config[COLUMNS_BETWEEN_SLOTS]
     row_height = config[ROW_HEIGHT]
+    column_width = config[COLUMN_WIDTH]
 
     for i_hall in range(0, halls_count):
         hall_name = halls[i_hall][NAME]
         slots = slots_by_hall_name[hall_name]
         slots_count = len(slots)
         for i_slot in range(0, slots_count):
-            start_row = i_slot * (slot_size + 2)  # Plus 2 because we need 2 rows for the header and footer of each slot
-            start_col = i_hall * 5  # Multiply by 5, because each slot is wide 4 columns. This makes 1 empty column to the right of each slot
+            start_row = i_slot * (slot_size + slot_header_rows + rows_between_slots)
+            start_col = i_hall * (slot_columns + columns_between_slots)
+
+            # Resize columns
+            worksheet.set_column(start_col, start_col + 3, column_width)
 
             # Write header
-            worksheet.set_row(start_row, row_height)
-            worksheet.write(start_row, start_col, "#", bold_format)
-            worksheet.write(start_row, start_col + 1, "Ученик", bold_format)
-            worksheet.write(start_row, start_col + 2, "Ментор", bold_format)
-            worksheet.write(start_row, start_col + 3, "Координатор", bold_format)
+            worksheet.merge_range(start_row, start_col, start_row, start_col + 3, f"Зала {hall_name} (ЧАСТ {i_slot + 1})", header_format)
+            row = start_row + 1
+            worksheet.write(row, start_col, "#", bold_format)
+            worksheet.write(row, start_col + 1, "Ученик", bold_format)
+            worksheet.write(row, start_col + 2, "Ментор", bold_format)
+            worksheet.write(row, start_col + 3, "Координатор", bold_format)
 
             # Write teams
             teams = slots[i_slot].teams
             teams_count = len(teams)
             for i_team in range(teams_count):
                 team = teams[i_team]
-                row = start_row + i_team + 1
+                row = start_row + i_team + 2
                 worksheet.set_row(row, row_height)
-                worksheet.write(start_row + i_team + 1, start_col, team.number, normal_format)
-                worksheet.write(start_row + i_team + 1, start_col + 1, team.student_name, normal_format)
-                worksheet.write(start_row + i_team + 1, start_col + 2, team.mentor_name, normal_format)
-                worksheet.write(start_row + i_team + 1, start_col + 3, team.coordinator_name, normal_format)
+                worksheet.write(row, start_col, team.number, normal_format)
+                worksheet.write(row, start_col + 1, team.student_name, normal_format)
+                worksheet.write(row, start_col + 2, team.mentor_name, normal_format)
+                worksheet.write(row, start_col + 3, team.coordinator_name, normal_format)
 
 
 def create_schedule(season: str):
@@ -239,10 +268,7 @@ def create_schedule(season: str):
     slots_by_hall_name = create_slots(config, teams)
     workbook = xlsxwriter.Workbook(SCHEDULE_FILE_NAME.format(season).lower())
     worksheet = workbook.add_worksheet("Schedule")
-
     populate_sheet(config, workbook, worksheet, slots_by_hall_name)
-
-    worksheet.autofit()
     workbook.close()
 
 

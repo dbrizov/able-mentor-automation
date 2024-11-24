@@ -25,5 +25,8 @@
         ],
         "random_seed": 0
     },
-    "row_height": 25
+    "row_height": 30,
+    "column_width": 15,
+    "rows_between_slots": 1,
+    "columns_between_slots": 1
 }
