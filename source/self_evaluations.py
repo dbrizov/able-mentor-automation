@@ -1,4 +1,5 @@
 import io
+import math
 import os
 import csv
 import docx
@@ -7,16 +8,24 @@ import numpy
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
-OUTPUT_DIRECTORY_PRESENT = f"{CURRENT_DIRECTORY}/student_self_evaluations_present"
-OUTPUT_DIRECTORY_ONLINE = f"{CURRENT_DIRECTORY}/student_self_evaluations_online"
-RESPONSES_FILE_NAME_PRESENT = "self_evaluations_responses_beginning_present.csv"
-RESPONSES_FILE_NAME_ONLINE = "self_evaluations_responses_beginning_online.csv"
-RESPONSES_FILE_PATH_PRESENT = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_PRESENT}"
-RESPONSES_FILE_PATH_ONLINE = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME_ONLINE}"
+OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_self_evaluations"
+RESPONSES_FILE_NAME = "self_evaluations.csv"
+RESPONSES_FILE_PATH = f"{CURRENT_DIRECTORY}/{RESPONSES_FILE_NAME}"
 
-INDEX_IMPORTANT_THINGS = 34
-INDEX_STUDENT_NAME = 35
-INDEX_SEND_TO_MENTOR = 36
+
+def get_column_index(column):
+    # 26 number system where [A...Z] is mapped to [1...26]
+    decimal_value = 0
+    for idx in reversed(range(0, len(column))):
+        decimal_value += (ord(column[idx]) - ord("A") + 1) * \
+            math.pow(26, len(column) - idx - 1)
+
+    return int(decimal_value - 1)  # the index is the decimal value minus 1
+
+
+IMPORTANT_THINGS = get_column_index("AI")
+STUDENT_NAME = get_column_index("AJ")
+SEND_TO_MENTOR = get_column_index("AK")
 
 column_titles = [None] * 37
 column_titles[0] = "Timestamp"
@@ -97,8 +106,8 @@ def try_create_doc(student_name, row_data, file_path):
 
     # 3 important things
     p = doc.add_paragraph()
-    p.add_run(f"{column_titles[INDEX_IMPORTANT_THINGS]}").bold = True
-    doc.add_paragraph(f'"{row_data[INDEX_IMPORTANT_THINGS]}"')
+    p.add_run(f"{column_titles[IMPORTANT_THINGS]}").bold = True
+    doc.add_paragraph(f'"{row_data[IMPORTANT_THINGS]}"')
 
     # communication
     bar_labels = [x.replace(" ", "\n") for x in column_titles[2:12:2]]
@@ -146,9 +155,9 @@ def create_docs(output_directory, responses_file_path):
             if idx == 0:
                 continue  # skip first row
 
-            student_name = row[INDEX_STUDENT_NAME].replace("/", "").strip()
+            student_name = row[STUDENT_NAME].replace("/", "").strip()
             file_path = ""
-            if row[INDEX_SEND_TO_MENTOR].startswith("Не"):
+            if row[SEND_TO_MENTOR].startswith("Не"):
                 file_path = f"{output_directory}/{student_name}_НЕ.docx".replace("\\", "/")
             else:
                 file_path = f"{output_directory}/{student_name}.docx".replace("\\", "/")
@@ -157,5 +166,4 @@ def create_docs(output_directory, responses_file_path):
 
 
 if __name__ == "__main__":
-    create_docs(OUTPUT_DIRECTORY_PRESENT, RESPONSES_FILE_PATH_PRESENT)
-    create_docs(OUTPUT_DIRECTORY_ONLINE, RESPONSES_FILE_PATH_ONLINE)
+    create_docs(OUTPUT_DIRECTORY, RESPONSES_FILE_PATH)

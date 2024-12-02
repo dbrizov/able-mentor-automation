@@ -4,8 +4,6 @@ student_profiles/
 student_profiles_pdf/
 student_profiles_redacted/
 student_self_evaluations/
-student_self_evaluations_online/
-student_self_evaluations_present/
 mail_attachments/
 mail_sender.log
 *.csv
