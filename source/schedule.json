@@ -1,0 +1,41 @@
+{
+    "csv": {
+        "active_column": "A",
+        "student_column": "C",
+        "mentor_column": "H",
+        "coordinator_column": "B",
+        "season_type_column": "K"
+    },
+    "format": {
+        "row_height": 30,
+        "column_width": 15,
+        "rows_between_slots": 1,
+        "columns_between_slots": 1
+    },
+    "sofia": {
+        "season_type": "София",
+        "slot_size": 16,
+        "halls": [
+            {
+                "name": "CITY",
+                "coordinators": []
+            },
+            {
+                "name": "NEW YORK",
+                "coordinators": []
+            }
+        ],
+        "random_seed": 1
+    },
+    "online": {
+        "season_type": "онлайн",
+        "slot_size": 12,
+        "halls": [
+            {
+                "name": "ONLINE",
+                "coordinators": []
+            }
+        ],
+        "random_seed": 0
+    }
+}
