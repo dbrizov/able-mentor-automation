@@ -1,9 +1,11 @@
 import os
 from docx2pdf import convert
 
+
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 INPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_redacted"
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_pdf"
+
 
 if not os.path.exists(OUTPUT_DIRECTORY):
     os.mkdir(OUTPUT_DIRECTORY)

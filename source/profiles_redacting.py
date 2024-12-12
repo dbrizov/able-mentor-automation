@@ -1,6 +1,7 @@
 import os
 import docx
 
+
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_redacted"
 
