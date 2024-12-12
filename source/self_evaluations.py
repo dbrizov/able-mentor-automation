@@ -17,8 +17,7 @@ def get_column_index(column):
     # 26 number system where [A...Z] is mapped to [1...26]
     decimal_value = 0
     for idx in reversed(range(0, len(column))):
-        decimal_value += (ord(column[idx]) - ord("A") + 1) * \
-            math.pow(26, len(column) - idx - 1)
+        decimal_value += (ord(column[idx]) - ord("A") + 1) * math.pow(26, len(column) - idx - 1)
 
     return int(decimal_value - 1)  # the index is the decimal value minus 1
 

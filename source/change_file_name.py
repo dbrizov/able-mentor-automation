@@ -1,9 +1,8 @@
-import os 
+import os
 import csv
 import math
 
-CURRENT_DIRECTORY = os.path.dirname(
-    os.path.realpath(__file__)).replace("\\", "/")
+CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_redacted"
 REGISTER_FILE_NAME = "student_register.csv"
 REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
@@ -12,8 +11,7 @@ REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
 def get_column_index(column):
     decimal_value = 0
     for idx in reversed(range(0, len(column))):
-        decimal_value += (ord(column[idx]) - ord("A") + 1) * \
-            math.pow(26, len(column) - idx - 1)
+        decimal_value += (ord(column[idx]) - ord("A") + 1) * math.pow(26, len(column) - idx - 1)
     return int(decimal_value - 1)
 
 
@@ -58,8 +56,7 @@ def rename_existing_profiles():
                 if matched_student_name:
                     mentor_name = mentor_student_map[matched_student_name]
                     new_filename = f"{mentor_name}.docx"
-                    os.rename(os.path.join(OUTPUT_DIRECTORY, filename),
-                              os.path.join(OUTPUT_DIRECTORY, new_filename))
+                    os.rename(os.path.join(OUTPUT_DIRECTORY, filename), os.path.join(OUTPUT_DIRECTORY, new_filename))
                     print(f"Renamed '{filename}' to '{new_filename}'")
                 else:
                     print(

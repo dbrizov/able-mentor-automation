@@ -3,15 +3,7 @@ import csv
 import docx
 import math
 
-# If your are using Visual Studio Code there may be a problem with importing the docx lib so you can run " pip install python-docx "
-
-# For the script to work you will need to download the current season's sheet table as a .csv file in the 'file' menu and put it into the same folder as this script.
-# Change the name of the .csv file to be student_register.csv
-# Then change the targeted table column names such as "O","AF" or "AL" in the functions down below to the coresponding column names in this season's register
-# After final a check that everything is right, you can run the script in any terminal or cmd and go to sleep
-
-CURRENT_DIRECTORY = os.path.dirname(
-    os.path.realpath(__file__)).replace("\\", "/")
+CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles"
 REGISTER_FILE_NAME = "student_register.csv"
 REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
@@ -21,8 +13,7 @@ def get_column_index(column):
     # 26 number system where [A...Z] is mapped to [1...26]
     decimal_value = 0
     for idx in reversed(range(0, len(column))):
-        decimal_value += (ord(column[idx]) - ord("A") + 1) * \
-            math.pow(26, len(column) - idx - 1)
+        decimal_value += (ord(column[idx]) - ord("A") + 1) * math.pow(26, len(column) - idx - 1)
 
     return int(decimal_value - 1)  # the index is the decimal value minus 1
 

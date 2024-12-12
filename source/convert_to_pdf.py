@@ -1,8 +1,6 @@
 import os
 from docx2pdf import convert
 
-# You will have to download the docx2pdf lib with this command in the cmd ( pip install python-docx docx2pdf  ) possibly as an administrator too
-
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 INPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_redacted"
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles_pdf"
