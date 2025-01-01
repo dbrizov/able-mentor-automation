@@ -201,7 +201,7 @@ def create_slots(config, teams: list):
             slot_index = slot_number - 1
             team_index = team_number - 1
             # When a new slot starts (except the first slot), we must not include the 'time_per_team_in_minutes' to the first team.
-            # So we decrease the team_index by 1 one more time in this case
+            # So we decrease the team_index by 1 in this case
             if team_number / slot_size > 1 and team_number % slot_size == 1:
                 team_index -= 1
 
