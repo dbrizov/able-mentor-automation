@@ -195,22 +195,17 @@ def create_slots(config, teams: list):
         teams_in_slot = list()
         slot_number = 1
         team_number = 1
+        minutes_to_add = 0  # This keeps the time accumulated after each team has finished their presenting
         for i_team in range(0, teams_in_hall_count):
             team = teams_in_hall[i_team]
 
-            slot_index = slot_number - 1
-            team_index = team_number - 1
-            # When a new slot starts (except the first slot), we must not include the 'time_per_team_in_minutes' to the first team.
-            # So we decrease the team_index by 1 in this case
-            if team_number / slot_size > 1 and team_number % slot_size == 1:
-                team_index -= 1
-
-            time_offset_in_minutes = time_per_team_in_minutes * team_index + time_between_slots_in_minutes * slot_index
+            time_offset_in_minutes = minutes_to_add + time_between_slots_in_minutes * (slot_number - 1)
             time_offset = pandas.Timedelta(minutes=time_offset_in_minutes)
             team_start_time = pandas.to_datetime(start_time) + time_offset
             team.start_time = team_start_time.strftime("%H:%M")
             team.number = team_number
 
+            minutes_to_add += time_per_team_in_minutes if team_number % slot_size != 0 else 0
             team_number += 1
             teams_in_slot.append(team)
             teams_in_slot_count = len(teams_in_slot)
