@@ -15,21 +15,27 @@
     "sofia": {
         "season_type": "София",
         "slot_size": 16,
+        "start_time": "10:55:00",
+        "time_per_team_in_minutes": 5,
+        "time_between_slots_in_minutes": 60,
         "halls": [
             {
                 "name": "CITY",
-                "coordinators": []
+                "coordinators": ["Елица", "Яна Р.", "Антония", "Вик", "Румен", "Мони", "Лео"]
             },
             {
                 "name": "NEW YORK",
-                "coordinators": []
+                "coordinators": ["Биляна", "Боби", "Йоанна В.", "Мария", "Марти", "Мила Анг.", "Ема", "Данаил", "Яна С."]
             }
         ],
-        "random_seed": 1
+        "random_seed": 0
     },
     "online": {
         "season_type": "онлайн",
-        "slot_size": 12,
+        "slot_size": 11,
+        "start_time": "10:55:00",
+        "time_per_team_in_minutes": 5,
+        "time_between_slots_in_minutes": 15,
         "halls": [
             {
                 "name": "ONLINE",

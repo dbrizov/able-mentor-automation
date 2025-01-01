@@ -33,6 +33,9 @@ SOFIA = "sofia"
 ONLINE = "online"
 SEASON_TYPE = "season_type"
 SLOT_SIZE = "slot_size"
+START_TIME = "start_time"
+TIME_PER_TEAM_IN_MINUTES = "time_per_team_in_minutes"
+TIME_BETWEEN_SLOTS_IN_MINUTES = "time_between_slots_in_minutes"
 HALLS = "halls"
 NAME = "name"
 COORDINATORS = "coordinators"
@@ -59,14 +62,15 @@ class Slot:
 
 
 class Team:
-    def __init__(self, number: int, student_name: str, mentor_name: str, coordinator_name: str):
+    def __init__(self, number: int, student_name: str, mentor_name: str, coordinator_name: str, start_time: str):
         self.number = number
         self.student_name = student_name
         self.mentor_name = mentor_name
         self.coordinator_name = coordinator_name
+        self.start_time = start_time
 
     def __repr__(self):
-        return f"({self.number}, {self.student_name}, {self.mentor_name}, {self.coordinator_name})"
+        return f"({self.number}, {self.student_name}, {self.mentor_name}, {self.coordinator_name}, {self.start_time})"
 
 
 def get_config(season: str):
@@ -87,6 +91,9 @@ def get_config(season: str):
             # season
             SEASON_TYPE: js[season][SEASON_TYPE],
             SLOT_SIZE: js[season][SLOT_SIZE],
+            START_TIME: js[season][START_TIME],
+            TIME_PER_TEAM_IN_MINUTES: js[season][TIME_PER_TEAM_IN_MINUTES],
+            TIME_BETWEEN_SLOTS_IN_MINUTES: js[season][TIME_BETWEEN_SLOTS_IN_MINUTES],
             HALLS: js[season][HALLS],
             RANDOM_SEED: js[season][RANDOM_SEED],
         }
@@ -120,9 +127,10 @@ def get_teams(config, csv_data):
 
     teams = list()
     team_number = 0
+    team_start_time = ""
     for i in range(len(active)):
         if active[i] == "Активен" and season_types[i] == config[SEASON_TYPE]:
-            teams.append(Team(team_number, students[i], mentors[i], coordinators[i]))
+            teams.append(Team(team_number, students[i], mentors[i], coordinators[i], team_start_time))
 
     return teams
 
@@ -175,6 +183,9 @@ def create_slots(config, teams: list):
 
     # Create slots by hall
     slot_size = config[SLOT_SIZE]
+    start_time = config[START_TIME]
+    time_per_team_in_minutes = config[TIME_PER_TEAM_IN_MINUTES]
+    time_between_slots_in_minutes = config[TIME_BETWEEN_SLOTS_IN_MINUTES]
     slots_by_hall_name = dict()
     for hall in halls:
         hall_name = hall[NAME]
@@ -186,7 +197,20 @@ def create_slots(config, teams: list):
         team_number = 1
         for i_team in range(0, teams_in_hall_count):
             team = teams_in_hall[i_team]
+
+            slot_index = slot_number - 1
+            team_index = team_number - 1
+            # When a new slot starts (except the first slot), we must not include the 'time_per_team_in_minutes' to the first team.
+            # So we decrease the team_index by 1 one more time in this case
+            if team_number / slot_size > 1 and team_number % slot_size == 1:
+                team_index -= 1
+
+            time_offset_in_minutes = time_per_team_in_minutes * team_index + time_between_slots_in_minutes * slot_index
+            time_offset = pandas.Timedelta(minutes=time_offset_in_minutes)
+            team_start_time = pandas.to_datetime(start_time) + time_offset
+            team.start_time = team_start_time.strftime("%H:%M")
             team.number = team_number
+
             team_number += 1
             teams_in_slot.append(team)
             teams_in_slot_count = len(teams_in_slot)
@@ -202,9 +226,6 @@ def create_slots(config, teams: list):
 
 
 def populate_sheet(config, workbook: Workbook, worksheet: Worksheet, slots_by_hall_name: dict):
-    # time = pandas.to_datetime("11:00:00")  # str(time.time())
-    # minutes_to_add = pandas.Timedelta(minutes=5)
-    # time = time + minutes_to_add
     normal_format = workbook.add_format({
         "border": 1,
         "border_color": "black",
@@ -236,7 +257,7 @@ def populate_sheet(config, workbook: Workbook, worksheet: Worksheet, slots_by_ha
     halls_count = len(halls)
     slot_size = config[SLOT_SIZE]
     slot_header_rows = 2
-    slot_columns = 4
+    slot_columns = 5
     rows_between_slots = config[ROWS_BETWEEN_SLOTS]
     columns_between_slots = config[COLUMNS_BETWEEN_SLOTS]
     row_height = config[ROW_HEIGHT]
@@ -249,17 +270,19 @@ def populate_sheet(config, workbook: Workbook, worksheet: Worksheet, slots_by_ha
         for i_slot in range(0, slots_count):
             start_row = i_slot * (slot_size + slot_header_rows + rows_between_slots)
             start_col = i_hall * (slot_columns + columns_between_slots)
+            end_col = start_col + (slot_columns - 1)
 
             # Resize columns
-            worksheet.set_column(start_col, start_col + 3, column_width)
+            worksheet.set_column(start_col, end_col, column_width)
 
             # Write header
-            worksheet.merge_range(start_row, start_col, start_row, start_col + 3, f"Зала {hall_name} (ЧАСТ {i_slot + 1})", header_format)
+            worksheet.merge_range(start_row, start_col, start_row, end_col, f"Зала {hall_name} (ЧАСТ {i_slot + 1})", header_format)
             row = start_row + 1
             worksheet.write(row, start_col, "#", bold_format)
             worksheet.write(row, start_col + 1, "Ученик", bold_format)
             worksheet.write(row, start_col + 2, "Ментор", bold_format)
             worksheet.write(row, start_col + 3, "Координатор", bold_format)
+            worksheet.write(row, start_col + 4, "", bold_format)
 
             # Write teams
             teams = slots[i_slot].teams
@@ -272,6 +295,7 @@ def populate_sheet(config, workbook: Workbook, worksheet: Worksheet, slots_by_ha
                 worksheet.write(row, start_col + 1, team.student_name, normal_format)
                 worksheet.write(row, start_col + 2, team.mentor_name, normal_format)
                 worksheet.write(row, start_col + 3, team.coordinator_name, normal_format)
+                worksheet.write(row, start_col + 4, team.start_time, normal_format)
 
 
 def create_schedule(season: str):
