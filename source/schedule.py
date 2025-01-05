@@ -11,7 +11,7 @@ from xlsxwriter.worksheet import Worksheet
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 CONFIG_FILE_NAME = "schedule.json"
 CONFIG_FILE_PATH = f"{CURRENT_DIRECTORY}/{CONFIG_FILE_NAME}"
-TEAMS_FILE_NAME = "teams.csv"
+TEAMS_FILE_NAME = "schedule_teams.csv"
 TEAMS_FILE_PATH = f"{CURRENT_DIRECTORY}/{TEAMS_FILE_NAME}"
 SCHEDULE_FILE_NAME = "schedule_{0}.xlsx"
 
