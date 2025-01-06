@@ -8,3 +8,4 @@
 - aiosmtpd==1.4.6
 - pandas==2.2.3
 - XlsxWriter==3.2.0
+- sentence-transformers==3.3.1
