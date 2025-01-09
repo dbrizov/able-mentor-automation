@@ -141,7 +141,6 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
 
 
 def find_matches():
-    print("extract students")
     students_filter = PersonDataFilter()
     students_filter.name_index = STUDENT_NAME
     students_filter.status_index = STUDENT_STATUS
@@ -150,7 +149,6 @@ def find_matches():
     students_filter.project_type_index = STUDENT_PROJECT_TYPE
     students = extract_people_data(STUDENTS_CSV_FILE_PATH, students_filter)
 
-    print("extract mentors")
     mentors_filter = PersonDataFilter()
     mentors_filter.name_index = MENTOR_NAME
     mentors_filter.status_index = MENTOR_STATUS
@@ -159,7 +157,6 @@ def find_matches():
     mentors_filter.project_type_index = MENTOR_PROJECT_TYPE
     mentors = extract_people_data(MENTORS_CSV_FILE_PATH, mentors_filter)
 
-    print("create model")
     model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     # model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
     # model = SentenceTransformer(AI_MODEL_FILE_PATH)
@@ -171,8 +168,7 @@ def find_matches():
             # find similarity
             interests_sim = util.cos_sim(student.encoded_interests(model), mentor.encoded_interests(model)).item() * INTERESTS_WEIGHT
             hobbies_sim = util.cos_sim(student.encoded_hobbies(model), mentor.encoded_hobbies(model)).item() * HOBBIES_WEIGHT
-            project_type_sim = util.cos_sim(student.encoded_project_type(
-                model), mentor.encoded_project_type(model)).item() * PROJECT_TYPE_WEIGHT
+            project_type_sim = util.cos_sim(student.encoded_project_type(model), mentor.encoded_project_type(model)).item() * PROJECT_TYPE_WEIGHT
             final_sim = interests_sim + hobbies_sim + project_type_sim
             max_sim = INTERESTS_WEIGHT + HOBBIES_WEIGHT + PROJECT_TYPE_WEIGHT
             sim_percent = final_sim / max_sim
