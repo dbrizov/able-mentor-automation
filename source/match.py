@@ -107,7 +107,7 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
                 continue
 
             status = row[filter.status_index]
-            if status != "matched":
+            if status == "matched":
                 continue
 
             interests = ""
