@@ -22,23 +22,24 @@ def get_column_index(column):
 
 
 # Column indices in the students' csv file
-STUDENT_NAME = get_column_index("D")
-STUDENT_STATUS = get_column_index("F")
-STUDENT_NON_SCHOOL_INTERESTS = get_column_index("AS")  # interests
-STUDENT_AREAS_OF_INTEREST = get_column_index("AY")  # interests
-STUDENT_MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("AZ")  # interests
-STUDENT_SPORT = get_column_index("AW")  # hobbies
-STUDENT_HOBBIES = get_column_index("BB")  # hobbies
-STUDENT_PROJECT_TYPE = get_column_index("BH")
+STUDENT_NAME = get_column_index("A")
+STUDENT_STATUS = get_column_index("Q")
+STUDENT_CONFIRMED = get_column_index("R")
+STUDENT_NON_SCHOOL_INTERESTS = get_column_index("AJ")  # interests
+STUDENT_AREAS_OF_INTEREST = get_column_index("AP")  # interests
+STUDENT_MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("AQ")  # interests
+STUDENT_SPORT = get_column_index("AN")  # hobbies
+STUDENT_HOBBIES = get_column_index("AS")  # hobbies
+STUDENT_PROJECT_TYPE = get_column_index("AY")
 
 # Column indices in the mentors' csv file
-MENTOR_NAME = get_column_index("A")
-MENTOR_STATUS = get_column_index("B")
-MENTOR_EDUCATION = get_column_index("O")  # interests
+MENTOR_NAME = get_column_index("H")
+MENTOR_STATUS = get_column_index("A")
+MENTOR_EDUCATION = get_column_index("P")  # interests
 MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("R")  # interests
-MENTOR_AREAS_OF_INTEREST = get_column_index("S")  # interests
-MENTOR_HOBBIES = get_column_index("T")  # hobbies
-MENTOR_PROJECT_TYPE = get_column_index("X")
+MENTOR_AREAS_OF_INTEREST = get_column_index("T")  # interests
+MENTOR_HOBBIES = get_column_index("U")  # hobbies
+MENTOR_PROJECT_TYPE = get_column_index("Y")
 
 # Comparison weights
 INTERESTS_WEIGHT = 4
@@ -175,7 +176,7 @@ def find_matches():
             mentor_suggestions.append((mentor, sim_percent))
 
         mentor_suggestions.sort(key=lambda x: x[1], reverse=True)
-        for i in range(0, 3):
+        for i in range(0, 5):
             print(f"{student.name}(Y) + {mentor_suggestions[i][0].name}(M) - {mentor_suggestions[i][1]:.2f}")
 
 
