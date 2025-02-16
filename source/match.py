@@ -41,6 +41,8 @@ MENTOR_AREAS_OF_INTEREST = get_column_index("T")  # interests
 MENTOR_HOBBIES = get_column_index("U")  # hobbies
 MENTOR_PROJECT_TYPE = get_column_index("Y")
 
+# Александър Алексиев (У) + Ралица Костадинова (М)
+
 # Comparison weights
 INTERESTS_WEIGHT = 4
 HOBBIES_WEIGHT = 2
