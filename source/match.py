@@ -23,25 +23,24 @@ def get_column_index(column):
 
 # Column indices in the students' csv file
 STUDENT_NAME = get_column_index("A")
-STUDENT_STATUS = get_column_index("Q")
-STUDENT_CONFIRMED = get_column_index("R")
-STUDENT_NON_SCHOOL_INTERESTS = get_column_index("AJ")  # interests
-STUDENT_AREAS_OF_INTEREST = get_column_index("AP")  # interests
-STUDENT_MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("AQ")  # interests
-STUDENT_SPORT = get_column_index("AN")  # hobbies
-STUDENT_HOBBIES = get_column_index("AS")  # hobbies
-STUDENT_PROJECT_TYPE = get_column_index("AY")
+STUDENT_STATUS = get_column_index("S")
+STUDENT_CONFIRMED = get_column_index("T")
+STUDENT_NON_SCHOOL_INTERESTS = get_column_index("AK")  # interests
+STUDENT_AREAS_OF_INTEREST = get_column_index("AQ")  # interests
+STUDENT_MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("AR")  # interests
+STUDENT_SPORT = get_column_index("AO")  # hobbies
+STUDENT_HOBBIES = get_column_index("AT")  # hobbies
+STUDENT_PROJECT_TYPE = get_column_index("AZ")
 
 # Column indices in the mentors' csv file
 MENTOR_NAME = get_column_index("H")
 MENTOR_STATUS = get_column_index("A")
+MENTOR_CONFIRMED = get_column_index("B")
 MENTOR_EDUCATION = get_column_index("P")  # interests
 MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("R")  # interests
 MENTOR_AREAS_OF_INTEREST = get_column_index("T")  # interests
 MENTOR_HOBBIES = get_column_index("U")  # hobbies
 MENTOR_PROJECT_TYPE = get_column_index("Y")
-
-# Александър Алексиев (У) + Ралица Костадинова (М)
 
 # Comparison weights
 INTERESTS_WEIGHT = 4
@@ -68,17 +67,17 @@ class PersonData:
         result += f"Project Type: {self.project_type}{os.linesep}"
         return result
 
-    def encoded_interests(self, model: SentenceTransformer):
+    def interests_enc(self, model: SentenceTransformer):
         if self._encoded_interests is None:
             self._encoded_interests = model.encode(self.interests)
         return self._encoded_interests
 
-    def encoded_hobbies(self, model: SentenceTransformer):
+    def hobbies_enc(self, model: SentenceTransformer):
         if self._encoded_hobbies is None:
             self._encoded_hobbies = model.encode(self.hobbies)
         return self._encoded_hobbies
 
-    def encoded_project_type(self, model: SentenceTransformer):
+    def project_type_enc(self, model: SentenceTransformer):
         if self._encoded_project_type is None:
             self._encoded_project_type = model.encode(self.project_type)
         return self._encoded_project_type
@@ -88,9 +87,11 @@ class PersonDataFilter:
     def __init__(self):
         self.name_index = None
         self.status_index = None
+        self.confirmed_index = None
         self.interests_indices = None
         self.hobbies_indices = None
         self.project_type_index = None
+        self.is_student = False
 
     def get_max_index(self):
         max_index = max(*self.interests_indices, *self.hobbies_indices, self.project_type_index)
@@ -109,9 +110,21 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
             if not name:
                 continue
 
-            status = row[filter.status_index]
-            if status == "matched":
-                continue
+            status = row[filter.status_index].lower()
+            if filter.is_student:
+                if status == "matched" or status.startswith("отпаднал"):
+                    continue
+            else:
+                if status == "matched" or status == "no matching!":
+                    continue
+
+            confirmed = row[filter.confirmed_index].lower()
+            if filter.is_student:
+                if confirmed != "да":
+                    continue
+            else:
+                if confirmed == "denied":
+                    continue
 
             interests = ""
             hobbies = ""
@@ -147,17 +160,21 @@ def find_matches():
     students_filter = PersonDataFilter()
     students_filter.name_index = STUDENT_NAME
     students_filter.status_index = STUDENT_STATUS
+    students_filter.confirmed_index = STUDENT_CONFIRMED
     students_filter.interests_indices = [STUDENT_NON_SCHOOL_INTERESTS, STUDENT_AREAS_OF_INTEREST, STUDENT_MENTOR_PROFESIONAL_EXPERIENCE]
     students_filter.hobbies_indices = [STUDENT_SPORT, STUDENT_HOBBIES]
     students_filter.project_type_index = STUDENT_PROJECT_TYPE
+    students_filter.is_student = True
     students = extract_people_data(STUDENTS_CSV_FILE_PATH, students_filter)
 
     mentors_filter = PersonDataFilter()
     mentors_filter.name_index = MENTOR_NAME
     mentors_filter.status_index = MENTOR_STATUS
+    mentors_filter.confirmed_index = MENTOR_CONFIRMED
     mentors_filter.interests_indices = [MENTOR_EDUCATION, MENTOR_PROFESIONAL_EXPERIENCE, MENTOR_AREAS_OF_INTEREST]
     mentors_filter.hobbies_indices = [MENTOR_HOBBIES]
     mentors_filter.project_type_index = MENTOR_PROJECT_TYPE
+    mentors_filter.is_student = False
     mentors = extract_people_data(MENTORS_CSV_FILE_PATH, mentors_filter)
 
     model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
@@ -165,13 +182,14 @@ def find_matches():
     # model = SentenceTransformer(AI_MODEL_FILE_PATH)
 
     print("find matches:")
+    matches = list()
     for student in students:
         mentor_suggestions = list()
         for mentor in mentors:
             # find similarity
-            interests_sim = util.cos_sim(student.encoded_interests(model), mentor.encoded_interests(model)).item() * INTERESTS_WEIGHT
-            hobbies_sim = util.cos_sim(student.encoded_hobbies(model), mentor.encoded_hobbies(model)).item() * HOBBIES_WEIGHT
-            project_type_sim = util.cos_sim(student.encoded_project_type(model), mentor.encoded_project_type(model)).item() * PROJECT_TYPE_WEIGHT
+            interests_sim = util.cos_sim(student.interests_enc(model), mentor.interests_enc(model)).item() * INTERESTS_WEIGHT
+            hobbies_sim = util.cos_sim(student.hobbies_enc(model), mentor.hobbies_enc(model)).item() * HOBBIES_WEIGHT
+            project_type_sim = util.cos_sim(student.project_type_enc(model), mentor.project_type_enc(model)).item() * PROJECT_TYPE_WEIGHT
             final_sim = interests_sim + hobbies_sim + project_type_sim
             max_sim = INTERESTS_WEIGHT + HOBBIES_WEIGHT + PROJECT_TYPE_WEIGHT
             sim_percent = final_sim / max_sim
@@ -179,7 +197,13 @@ def find_matches():
 
         mentor_suggestions.sort(key=lambda x: x[1], reverse=True)
         for i in range(0, 5):
-            print(f"{student.name}(Y) + {mentor_suggestions[i][0].name}(M) - {mentor_suggestions[i][1]:.2f}")
+            match_entry = f"{student.name}(Y) + {mentor_suggestions[i][0].name}(M) - {mentor_suggestions[i][1]:.2f}"
+            matches.append(match_entry)
+            print(match_entry)
+
+    with open("matches.txt", "w", encoding="utf-8") as file:
+        for entry in matches:
+            file.write(f"{entry}\n")
 
 
 if __name__ == "__main__":
