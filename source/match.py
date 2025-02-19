@@ -31,21 +31,29 @@ STUDENT_MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("AR")  # interests
 STUDENT_SPORT = get_column_index("AO")  # hobbies
 STUDENT_HOBBIES = get_column_index("AT")  # hobbies
 STUDENT_PROJECT_TYPE = get_column_index("AZ")
+STUDENT_HOURS_PER_WEEK = get_column_index("AY")
 
 # Column indices in the mentors' csv file
-MENTOR_NAME = get_column_index("H")
+MENTOR_NAME = get_column_index("I")
 MENTOR_STATUS = get_column_index("A")
 MENTOR_CONFIRMED = get_column_index("B")
-MENTOR_EDUCATION = get_column_index("P")  # interests
-MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("R")  # interests
-MENTOR_AREAS_OF_INTEREST = get_column_index("T")  # interests
-MENTOR_HOBBIES = get_column_index("U")  # hobbies
-MENTOR_PROJECT_TYPE = get_column_index("Y")
+MENTOR_EDUCATION = get_column_index("Q")  # interests
+MENTOR_PROFESIONAL_EXPERIENCE = get_column_index("S")  # interests
+MENTOR_AREAS_OF_INTEREST = get_column_index("U")  # interests
+MENTOR_HOBBIES = get_column_index("V")  # hobbies
+MENTOR_PROJECT_TYPE = get_column_index("Z")
+MENTOR_HOURS_PER_WEEK = get_column_index("Y")
 
 # Comparison weights
 INTERESTS_WEIGHT = 4
 HOBBIES_WEIGHT = 2
-PROJECT_TYPE_WEIGHT = 1
+PROJECT_TYPE_WEIGHT = 2
+HOURS_PER_WEEK_WEIGHT = 1
+SIMILARITY_PERCENT_DISCARD_THRESHOLD = 50  # similarities below this percentage will be discarded
+
+# Hours per week
+MIN_HOURS_PER_WEEK = 1
+MAX_HOURS_PER_WEEK = 6
 
 
 class PersonData:
@@ -55,6 +63,7 @@ class PersonData:
         self.interests = None
         self.hobbies = None
         self.project_type = None
+        self.hours_per_week = None
         self._encoded_interests = None
         self._encoded_hobbies = None
         self._encoded_project_type = None
@@ -65,6 +74,7 @@ class PersonData:
         result += f"Interests: {self.interests}{os.linesep}"
         result += f"Hobbies: {self.hobbies}{os.linesep}"
         result += f"Project Type: {self.project_type}{os.linesep}"
+        result += f"Hours/Week: {self.hours_per_week}{os.linesep}"
         return result
 
     def interests_enc(self, model: SentenceTransformer):
@@ -91,11 +101,20 @@ class PersonDataFilter:
         self.interests_indices = None
         self.hobbies_indices = None
         self.project_type_index = None
+        self.hours_per_week_index = None
         self.is_student = False
 
     def get_max_index(self):
-        max_index = max(*self.interests_indices, *self.hobbies_indices, self.project_type_index)
+        max_index = max(self.name_index, self.status_index, self.confirmed_index, *self.interests_indices,
+                        *self.hobbies_indices, self.project_type_index, self.hours_per_week_index)
         return max_index
+
+
+def parse_hours_per_week(hours_per_week: str):
+    try:
+        return int(hours_per_week)
+    except ValueError:
+        return MAX_HOURS_PER_WEEK
 
 
 def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[PersonData]:
@@ -129,6 +148,7 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
             interests = ""
             hobbies = ""
             project_type = ""
+            hours_per_week = 0
             for col_i in range(0, len(row)):
                 if col_i in filter.interests_indices:
                     interests += f"{row[col_i]}{os.linesep}"
@@ -142,6 +162,10 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
                     project_type = row[col_i]
                     continue
 
+                if col_i == filter.hours_per_week_index:
+                    hours_per_week = parse_hours_per_week(row[col_i])
+                    continue
+
                 if col_i >= filter.get_max_index():
                     person = PersonData()
                     person.name = name
@@ -149,6 +173,7 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
                     person.interests = interests
                     person.hobbies = hobbies
                     person.project_type = project_type
+                    person.hours_per_week = hours_per_week
                     people.append(person)
                     break
 
@@ -164,6 +189,7 @@ def find_matches():
     students_filter.interests_indices = [STUDENT_NON_SCHOOL_INTERESTS, STUDENT_AREAS_OF_INTEREST, STUDENT_MENTOR_PROFESIONAL_EXPERIENCE]
     students_filter.hobbies_indices = [STUDENT_SPORT, STUDENT_HOBBIES]
     students_filter.project_type_index = STUDENT_PROJECT_TYPE
+    students_filter.hours_per_week_index = STUDENT_HOURS_PER_WEEK
     students_filter.is_student = True
     students = extract_people_data(STUDENTS_CSV_FILE_PATH, students_filter)
 
@@ -174,6 +200,7 @@ def find_matches():
     mentors_filter.interests_indices = [MENTOR_EDUCATION, MENTOR_PROFESIONAL_EXPERIENCE, MENTOR_AREAS_OF_INTEREST]
     mentors_filter.hobbies_indices = [MENTOR_HOBBIES]
     mentors_filter.project_type_index = MENTOR_PROJECT_TYPE
+    mentors_filter.hours_per_week_index = MENTOR_HOURS_PER_WEEK
     mentors_filter.is_student = False
     mentors = extract_people_data(MENTORS_CSV_FILE_PATH, mentors_filter)
 
@@ -190,14 +217,17 @@ def find_matches():
             interests_sim = util.cos_sim(student.interests_enc(model), mentor.interests_enc(model)).item() * INTERESTS_WEIGHT
             hobbies_sim = util.cos_sim(student.hobbies_enc(model), mentor.hobbies_enc(model)).item() * HOBBIES_WEIGHT
             project_type_sim = util.cos_sim(student.project_type_enc(model), mentor.project_type_enc(model)).item() * PROJECT_TYPE_WEIGHT
-            final_sim = interests_sim + hobbies_sim + project_type_sim
-            max_sim = INTERESTS_WEIGHT + HOBBIES_WEIGHT + PROJECT_TYPE_WEIGHT
-            sim_percent = final_sim / max_sim
+            hours_per_week_sim = (1 - abs(student.hours_per_week - mentor.hours_per_week) / (MAX_HOURS_PER_WEEK - MIN_HOURS_PER_WEEK)) * HOURS_PER_WEEK_WEIGHT
+            final_sim = interests_sim + hobbies_sim + project_type_sim + hours_per_week_sim
+            max_sim = INTERESTS_WEIGHT + HOBBIES_WEIGHT + PROJECT_TYPE_WEIGHT + HOURS_PER_WEEK_WEIGHT
+            sim_percent = int((final_sim / max_sim) * 100)
             mentor_suggestions.append((mentor, sim_percent))
 
         mentor_suggestions.sort(key=lambda x: x[1], reverse=True)
-        for i in range(0, 5):
-            match_entry = f"{student.name}(Y) + {mentor_suggestions[i][0].name}(M) - {mentor_suggestions[i][1]:.2f}"
+        for mentor_suggestion in mentor_suggestions:
+            if mentor_suggestion[1] < SIMILARITY_PERCENT_DISCARD_THRESHOLD:
+                break
+            match_entry = f"{student.name}(Y) + {mentor_suggestion[0].name}(M) - {mentor_suggestion[1]}"
             matches.append(match_entry)
             print(match_entry)
 
