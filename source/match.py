@@ -405,9 +405,9 @@ def find_matches():
             if mentor_suggestion[1] < SIMILARITY_PERCENT_DISCARD_THRESHOLD:
                 break
             match_entry = f"{student.name}(Y) + {mentor_suggestion[0].name}(M) - {mentor_suggestion[1]}"
-            match_entry = f"{student.name}"
-            match_entry = f"{mentor_suggestion[0].name}"
-            match_entry = f"{mentor_suggestion[1]}"
+            # match_entry = f"{student.name}"
+            # match_entry = f"{mentor_suggestion[0].name}"
+            # match_entry = f"{mentor_suggestion[1]}"
             matches.append(match_entry)
             # print(match_entry)
 
