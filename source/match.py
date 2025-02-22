@@ -131,32 +131,32 @@ class PersonData:
 
     def synthesized_info_enc(self, model: SentenceTransformer):
         if self._encoded_synthesized_info is None:
-            self._encoded_synthesized_info = model.encode(self._encoded_synthesized_info)
+            self._encoded_synthesized_info = model.encode(self.synthesized_info)
         return self._encoded_synthesized_info
 
     def survey_0_enc(self, model: SentenceTransformer):
         if self._encoded_survey_0 is None:
-            self._encoded_survey_0 = model.encode(self._encoded_survey_0)
+            self._encoded_survey_0 = model.encode(self.survey_0)
         return self._encoded_survey_0
 
     def survey_1_enc(self, model: SentenceTransformer):
         if self._encoded_survey_1 is None:
-            self._encoded_survey_1 = model.encode(self._encoded_survey_1)
+            self._encoded_survey_1 = model.encode(self.survey_1)
         return self._encoded_survey_1
 
     def survey_2_enc(self, model: SentenceTransformer):
         if self._encoded_survey_2 is None:
-            self._encoded_survey_2 = model.encode(self._encoded_survey_2)
+            self._encoded_survey_2 = model.encode(self.survey_2)
         return self._encoded_survey_2
 
     def survey_3_enc(self, model: SentenceTransformer):
         if self._encoded_survey_3 is None:
-            self._encoded_survey_3 = model.encode(self._encoded_survey_3)
+            self._encoded_survey_3 = model.encode(self.survey_3)
         return self._encoded_survey_3
 
     def survey_4_enc(self, model: SentenceTransformer):
         if self._encoded_survey_4 is None:
-            self._encoded_survey_4 = model.encode(self._encoded_survey_4)
+            self._encoded_survey_4 = model.encode(self.survey_4)
         return self._encoded_survey_4
 
 
@@ -244,43 +244,33 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
             for col_i in range(0, len(row)):
                 if col_i in filter.interests_indices:
                     interests += f"{row[col_i]}{os.linesep}"
-                    continue
 
                 if col_i in filter.hobbies_indices:
                     hobbies += f"{row[col_i]}{os.linesep}"
-                    continue
 
                 if col_i == filter.project_type_index:
                     project_type = row[col_i]
-                    continue
 
                 if col_i == filter.hours_per_week_index:
                     hours_per_week = parse_hours_per_week(row[col_i])
-                    continue
 
                 if col_i in filter.synthesized_info_indices:
                     synthesized_info += f"{row[col_i]}{os.linesep}"
-                    continue
 
                 if col_i == filter.survey_0_index:
                     survey_0 = row[col_i]
-                    continue
 
                 if col_i == filter.survey_1_index:
                     survey_1 = row[col_i]
-                    continue
 
                 if col_i == filter.survey_2_index:
                     survey_2 = row[col_i]
-                    continue
 
                 if col_i == filter.survey_3_index:
                     survey_3 = row[col_i]
-                    continue
 
                 if col_i == filter.survey_4_index:
                     survey_4 = row[col_i]
-                    continue
 
                 if col_i >= filter.get_max_index():
                     person = PersonData()
