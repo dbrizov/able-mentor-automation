@@ -49,7 +49,9 @@ INTERESTS_WEIGHT = 4
 HOBBIES_WEIGHT = 2
 PROJECT_TYPE_WEIGHT = 2
 HOURS_PER_WEEK_WEIGHT = 1
-SIMILARITY_PERCENT_DISCARD_THRESHOLD = 50  # similarities below this percentage will be discarded
+
+# Similarities below this percentage will be discarded
+SIMILARITY_PERCENT_DISCARD_THRESHOLD = 50
 
 # Hours per week
 MIN_HOURS_PER_WEEK = 1
