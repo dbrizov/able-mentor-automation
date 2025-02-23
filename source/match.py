@@ -152,19 +152,15 @@ def extract_people_data(csv_file_path: str, filter: PersonDataFilter) -> list[Pe
             for col_i in range(0, len(row)):
                 if col_i in filter.interests_indices:
                     interests += f"{row[col_i]}{os.linesep}"
-                    continue
 
                 if col_i in filter.hobbies_indices:
                     hobbies += f"{row[col_i]}{os.linesep}"
-                    continue
 
                 if col_i == filter.project_type_index:
                     project_type = row[col_i]
-                    continue
 
                 if col_i == filter.hours_per_week_index:
                     hours_per_week = parse_hours_per_week(row[col_i])
-                    continue
 
                 if col_i >= filter.get_max_index():
                     person = PersonData()
