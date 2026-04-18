@@ -1,0 +1,8 @@
+numpy
+pandas
+matplotlib
+xlsxwriter
+python-docx
+docx2pdf
+aiosmtpd
+sentence-transformers
