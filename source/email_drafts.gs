@@ -17,7 +17,7 @@ const MAX_TEMPLATES = 30;        // how many templates the menu can show
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
-  const send = ui.createMenu("Send email");
+  const send = ui.createMenu("Draft emails");
 
   const templates = readTemplates();
   if (templates === null) {
