@@ -67,7 +67,7 @@ function migrateToRegisters() {
 
     const results = plan.jobs.map(job => {
       try {
-        appendRows(job.sheet, job.rows);
+        appendRows(job);
         return `✓ ${job.city} / ${job.tab}: added ${job.rows.length}`;
       } catch (e) {
         return `✗ ${job.city} / ${job.tab}: ${e.message}`;
@@ -113,7 +113,7 @@ function buildPlan() {
       const city = String(row[iCity]).trim() || ONLINE;
       if (!byCity[city]) byCity[city] = {};
       if (!byCity[city][tab]) byCity[city][tab] = [];
-      byCity[city][tab].push({ email, keys: src.keys, row });
+      byCity[city][tab].push({ email, keys: src.keys, labels: src.labels, row });
     });
 
     if (noEmail.length) {
@@ -154,14 +154,32 @@ function buildPlan() {
         parts.push(`${tab}: tab missing, run "Set up registers" first`);
         return;
       }
-      const target = readTab(sheet, `${city}/${tab}`);
-      const iEmail = target.col(EMAIL_COLUMN);
-      const existing = new Set(target.rows.map(r => normEmail(r[iEmail])).filter(Boolean));
+
+      let target;
+      try {
+        target = readTab(sheet, `${city}/${tab}`);
+        target.col(EMAIL_COLUMN);
+      } catch (e) {
+        parts.push(`${tab}: ${e.message}`);
+        return;
+      }
 
       const people = byCity[city][tab];
+      const map = columnMap(people[0].keys, people[0].labels, target.keys);
+      if (map.missing.length) {
+        notes.push(`⚠ ${city} / ${tab}: register has no column for: ${map.missing.join(" | ")} — those values are not copied`);
+      }
+
+      const iEmail = target.col(EMAIL_COLUMN);
+      const existing = new Set(target.rows.map(r => normEmail(r[iEmail])).filter(Boolean));
       const fresh = people.filter(p => !existing.has(p.email));
       if (fresh.length) {
-        jobs.push({ city, tab, sheet, rows: fresh.map(p => mapRow(p, target.keys)) });
+        jobs.push({
+          city, tab, sheet,
+          startRow: lastFilledRow(target, map.cols) + 1,
+          cols: map.cols.map(c => c.dst),
+          rows: fresh.map(p => map.cols.map(c => p.row[c.src])),
+        });
         totalNew += fresh.length;
       }
       parts.push(`${tab}: ${fresh.length} new, ${people.length - fresh.length} already there`);
@@ -172,21 +190,44 @@ function buildPlan() {
   return { lines: lines.concat(notes.length ? [""].concat(notes) : []), jobs, totalNew };
 }
 
-// Puts a source row into the register's column order, matching by header text.
-function mapRow(person, targetKeys) {
+// Matches form columns to register columns by header name (not position).
+// Register columns with no matching form column are custom columns and are never written.
+function columnMap(srcKeys, srcLabels, dstKeys) {
   const srcIndex = {};
-  person.keys.forEach((k, i) => { if (k) srcIndex[k] = i; });
-  return targetKeys.map(k => (k && k in srcIndex) ? person.row[srcIndex[k]] : "");
+  srcKeys.forEach((k, i) => { if (k) srcIndex[k] = i; });
+  const dstKeySet = new Set(dstKeys.filter(Boolean));
+
+  const cols = [];
+  dstKeys.forEach((k, i) => { if (k && k in srcIndex) cols.push({ src: srcIndex[k], dst: i }); });
+  const missing = srcKeys.map((k, i) => (k && !dstKeySet.has(k)) ? srcLabels[i] : null).filter(Boolean);
+  return { cols, missing };
 }
 
-function appendRows(sheet, rows) {
-  const start = sheet.getLastRow() + 1;
-  const width = rows[0].length;
-  const needRows = start + rows.length - 1 - sheet.getMaxRows();
-  if (needRows > 0) sheet.insertRowsAfter(sheet.getMaxRows(), needRows);
-  const needCols = width - sheet.getMaxColumns();
-  if (needCols > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), needCols);
-  sheet.getRange(start, 1, rows.length, width).setValues(rows);
+// Last row that has data in any of the form columns. Custom columns are ignored, so
+// checkboxes or formulas filled down a custom column don't push new rows to the bottom.
+function lastFilledRow(target, cols) {
+  let last = 1;  // header
+  target.rows.forEach((r, i) => {
+    if (cols.some(c => r[c.dst] !== "" && r[c.dst] !== null)) last = target.rowNums[i];
+  });
+  return last;
+}
+
+// Writes only the form columns, one block per run of adjacent columns,
+// so custom columns (notes, checkboxes, formulas) in the same rows are left untouched.
+function appendRows(job) {
+  const { sheet, startRow, cols, rows } = job;
+  const lastRow = startRow + rows.length - 1;
+  if (lastRow > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), lastRow - sheet.getMaxRows());
+
+  let i = 0;
+  while (i < cols.length) {
+    let j = i;
+    while (j + 1 < cols.length && cols[j + 1] === cols[j] + 1) j++;
+    const block = rows.map(r => r.slice(i, j + 1));
+    sheet.getRange(startRow, cols[i] + 1, rows.length, j - i + 1).setValues(block);
+    i = j + 1;
+  }
 }
 
 // ---------- Register setup ----------
@@ -263,32 +304,40 @@ function makeTemplate(ss, name) {
 
 // ---------- Helpers ----------
 
-// Reads a tab: header keys + non-empty data rows.
-// Header keys are "text#n" so repeated headers (the students tab has one twice) stay distinct.
+// Reads a tab: header keys + non-empty data rows (with their sheet row numbers).
+// Header keys are "text#n" so repeated headers (the students tab has one twice) stay distinct;
+// the 2nd "X" in the form goes to the 2nd "X" column in the register.
 function readTab(sheet, label) {
   if (!sheet) throw new Error(`Sheet "${label}" not found`);
   const values = sheet.getDataRange().getValues();
-  const keys = headerKeys(values.shift() || []);
+  const header = values.shift() || [];
+  const keys = headerKeys(header);
+  const labels = header.map(h => String(h).replace(/\s+/g, " ").trim());
   const rows = [], rowNums = [];
   values.forEach((r, i) => {
     if (r.some(v => v !== "" && v !== null)) { rows.push(r); rowNums.push(i + 2); }  // +2: header + 1-based
   });
   const col = name => {
-    const i = keys.indexOf(`${name}#1`);
+    const i = keys.indexOf(`${normHeader(name)}#1`);
     if (i < 0) throw new Error(`Missing "${name}" column in "${label}"`);
     return i;
   };
-  return { keys, rows, rowNums, col };
+  return { keys, labels, rows, rowNums, col };
 }
 
 function headerKeys(header) {
   const seen = {};
   return header.map(h => {
-    h = String(h).trim();
+    h = normHeader(h);
     if (!h) return "";
     seen[h] = (seen[h] || 0) + 1;
     return `${h}#${seen[h]}`;
   });
+}
+
+// "Email", " email ", "EMAIL\n" all match. Line breaks and repeated spaces count as one space.
+function normHeader(h) {
+  return String(h).replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 function normEmail(v) {
