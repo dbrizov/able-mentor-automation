@@ -8,27 +8,68 @@ const EMAIL_COLUMN = "Email";                   // unique ID of a person
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("ABLE Tools")
-    //.addItem("Set up registers", "setupRegisters")
+    .addItem("Init settings", "initSettings")
+    .addItem("Set up registers", "setupRegisters")
     .addItem("Migrate to registers", "migrateToRegisters")
     .addToUi();
 }
 
 // ---------- Settings ----------
 
+// Creates an empty "Settings" tab: City | Register spreadsheet (ID or URL) | Skip.
+// Does nothing if the tab already exists.
+function initSettings() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(SETTINGS_SHEET)) {
+    ui.alert(`The "${SETTINGS_SHEET}" tab already exists. Nothing was changed.`);
+    return;
+  }
+
+  const sheet = ss.insertSheet(SETTINGS_SHEET);
+  sheet.getRange(1, 1, 1, 3)
+    .setValues([["City", "Register spreadsheet (ID or URL)", "Skip"]])
+    .setFontWeight("bold");
+  sheet.setFrozenRows(1);
+  sheet.setColumnWidth(1, 160);
+  sheet.setColumnWidth(2, 420);
+  sheet.setColumnWidth(3, 60);
+  sheet.getRange(2, 3, 30, 1).insertCheckboxes();  // unticked = migrate, ticked = skip
+
+  ss.setActiveSheet(sheet);
+  ss.toast("Settings tab created. Add one city per row.");
+}
+
 // Returns { "София": "1AbC...", ... }. Accepts a bare ID or a full spreadsheet URL.
+// Cities ticked in the "Skip" column (C) are left out; see readSkippedCities().
 function readSettings() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET);
   if (!sheet) return {};
 
+  const skipped = readSkippedCities();
   const map = {};
   sheet.getDataRange().getValues().slice(1).forEach(([city, idOrUrl]) => {
     city = String(city).trim();
     idOrUrl = String(idOrUrl).trim();
-    if (!city) return;
+    if (!city || skipped.has(city)) return;
     const m = idOrUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
     map[city] = m ? m[1] : idOrUrl;
   });
   return map;
+}
+
+// Cities with a ticked checkbox (or "x" / "yes" / "да") in column C of Settings.
+// Those cities are not migrated and not set up, but keep their register ID.
+function readSkippedCities() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET);
+  const skipped = new Set();
+  if (!sheet) return skipped;
+  sheet.getDataRange().getValues().slice(1).forEach(([city, , skip]) => {
+    city = String(city).trim();
+    const v = String(skip).trim().toLowerCase();
+    if (city && (skip === true || ["true", "x", "yes", "да"].includes(v))) skipped.add(city);
+  });
+  return skipped;
 }
 
 // ---------- Migration ----------
@@ -87,6 +128,7 @@ function migrateToRegisters() {
 function buildPlan() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const settings = readSettings();
+  const skippedCities = readSkippedCities();
 
   // city -> tab -> [{ email, keys, row }]
   const byCity = {};
@@ -134,6 +176,10 @@ function buildPlan() {
   Object.keys(byCity).sort().forEach(city => {
     const id = settings[city];
     const counts = Object.keys(byCity[city]).map(tab => `${byCity[city][tab].length} ${tab}`).join(", ");
+    if (skippedCities.has(city)) {
+      lines.push(`⏸ ${city}: skipped in Settings — not migrated (${counts})`);
+      return;
+    }
     if (!id) {
       lines.push(`✗ ${city}: no register in Settings — skipped (${counts})`);
       return;
@@ -253,7 +299,8 @@ function setupRegisters() {
   // is ever copied into (or left in the version history of) the registers.
   const templates = [STUDENTS_SHEET, MENTORS_SHEET].map(name => makeTemplate(ss, name));
 
-  const results = missing.map(city => `– ${city}: skipped, no register in Settings`);
+  const results = missing.map(city => `– ${city}: skipped, no register in Settings`)
+    .concat([...readSkippedCities()].map(city => `⏸ ${city}: skipped in Settings`));
   try {
     cities.forEach(city => {
       try {
