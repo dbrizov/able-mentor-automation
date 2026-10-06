@@ -16,7 +16,7 @@ function onOpen() {
 
 // ---------- Settings ----------
 
-// Creates an empty "Settings" tab: City | Register spreadsheet (ID or URL) | Skip.
+// Creates an empty "Settings" tab: City | Register spreadsheet (ID or URL) | Skip students | Skip mentors.
 // Does nothing if the tab already exists.
 function initSettings() {
   const ui = SpreadsheetApp.getUi();
@@ -27,49 +27,77 @@ function initSettings() {
   }
 
   const sheet = ss.insertSheet(SETTINGS_SHEET);
-  sheet.getRange(1, 1, 1, 3)
-    .setValues([["City", "Register spreadsheet (ID or URL)", "Skip"]])
+  sheet.getRange(1, 1, 1, 4)
+    .setValues([["City", "Register spreadsheet (ID or URL)", "Skip students", "Skip mentors"]])
     .setFontWeight("bold");
   sheet.setFrozenRows(1);
   sheet.setColumnWidth(1, 160);
   sheet.setColumnWidth(2, 420);
-  sheet.setColumnWidth(3, 60);
-  sheet.getRange(2, 3, 30, 1).insertCheckboxes();  // unticked = migrate, ticked = skip
+  sheet.setColumnWidth(3, 110);
+  sheet.setColumnWidth(4, 110);
+  sheet.getRange(2, 3, 30, 2).insertCheckboxes();  // unticked = migrate, ticked = skip
 
   ss.setActiveSheet(sheet);
   ss.toast("Settings tab created. Add one city per row.");
 }
 
 // Returns { "София": "1AbC...", ... }. Accepts a bare ID or a full spreadsheet URL.
-// Cities ticked in the "Skip" column (C) are left out; see readSkippedCities().
 function readSettings() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET);
   if (!sheet) return {};
 
-  const skipped = readSkippedCities();
   const map = {};
   sheet.getDataRange().getValues().slice(1).forEach(([city, idOrUrl]) => {
     city = String(city).trim();
     idOrUrl = String(idOrUrl).trim();
-    if (!city || skipped.has(city)) return;
+    if (!city) return;
     const m = idOrUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
     map[city] = m ? m[1] : idOrUrl;
   });
   return map;
 }
 
-// Cities with a ticked checkbox (or "x" / "yes" / "да") in column C of Settings.
-// Those cities are not migrated and not set up, but keep their register ID.
-function readSkippedCities() {
+const SKIP_HEADERS = {
+  "skip students": [STUDENTS_SHEET],
+  [`skip ${STUDENTS_SHEET}`]: [STUDENTS_SHEET],
+  "skip mentors": [MENTORS_SHEET],
+  [`skip ${MENTORS_SHEET}`]: [MENTORS_SHEET],
+  "skip": [STUDENTS_SHEET, MENTORS_SHEET],
+};
+
+// Returns { "София": Set(["ученици"]), ... } for every city with a ticked skip box
+// (or "true" / "x" / "yes" / "да" in any case).
+function readSkips() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET);
-  const skipped = new Set();
-  if (!sheet) return skipped;
-  sheet.getDataRange().getValues().slice(1).forEach(([city, , skip]) => {
-    city = String(city).trim();
-    const v = String(skip).trim().toLowerCase();
-    if (city && (skip === true || ["true", "x", "yes", "да"].includes(v))) skipped.add(city);
+  const skips = {};
+  if (!sheet) return skips;
+
+  const [header, ...rows] = sheet.getDataRange().getValues();
+  const skipCols = [];
+  header.forEach((h, i) => {
+    const tabs = SKIP_HEADERS[String(h).replace(/\s+/g, " ").trim().toLowerCase()];
+    if (tabs) skipCols.push({ i, tabs });
   });
-  return skipped;
+
+  rows.forEach(r => {
+    const city = String(r[0]).trim();
+    if (!city) return;
+    skipCols.forEach(({ i, tabs }) => {
+      const v = r[i];
+      const s = String(v).trim().toLowerCase();
+      if (v === true || ["true", "x", "yes", "да"].includes(s)) {
+        if (!skips[city]) skips[city] = new Set();
+        tabs.forEach(t => skips[city].add(t));
+      }
+    });
+  });
+  return skips;
+}
+
+function isSkipped(skips, city, tab) {
+  const skippedTabs = skips[city];   // undefined if nothing is skipped for this city
+  if (skippedTabs === undefined) return false;
+  return skippedTabs.has(tab);
 }
 
 // ---------- Migration ----------
@@ -128,7 +156,7 @@ function migrateToRegisters() {
 function buildPlan() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const settings = readSettings();
-  const skippedCities = readSkippedCities();
+  const skips = readSkips();
 
   // city -> tab -> [{ email, keys, row }]
   const byCity = {};
@@ -176,7 +204,8 @@ function buildPlan() {
   Object.keys(byCity).sort().forEach(city => {
     const id = settings[city];
     const counts = Object.keys(byCity[city]).map(tab => `${byCity[city][tab].length} ${tab}`).join(", ");
-    if (skippedCities.has(city)) {
+    const tabs = Object.keys(byCity[city]);
+    if (tabs.every(tab => isSkipped(skips, city, tab))) {
       lines.push(`⏸ ${city}: skipped in Settings — not migrated (${counts})`);
       return;
     }
@@ -194,7 +223,11 @@ function buildPlan() {
     }
 
     const parts = [];
-    Object.keys(byCity[city]).forEach(tab => {
+    tabs.forEach(tab => {
+      if (isSkipped(skips, city, tab)) {
+        parts.push(`${tab}: ⏸ skipped in Settings (${byCity[city][tab].length})`);
+        return;
+      }
       const sheet = dst.getSheetByName(tab);
       if (!sheet) {
         parts.push(`${tab}: tab missing, run "Set up registers" first`);
@@ -299,14 +332,19 @@ function setupRegisters() {
   // is ever copied into (or left in the version history of) the registers.
   const templates = [STUDENTS_SHEET, MENTORS_SHEET].map(name => makeTemplate(ss, name));
 
-  const results = missing.map(city => `– ${city}: skipped, no register in Settings`)
-    .concat([...readSkippedCities()].map(city => `⏸ ${city}: skipped in Settings`));
+  const skips = readSkips();
+  const results = missing.map(city => `– ${city}: skipped, no register in Settings`);
   try {
     cities.forEach(city => {
+      if (templates.every(t => isSkipped(skips, city, t.name))) {
+        results.push(`⏸ ${city}: skipped in Settings`);
+        return;
+      }
       try {
         const dst = openRegister(settings[city]);
         const done = [];
         templates.forEach(t => {
+          if (isSkipped(skips, city, t.name)) { done.push(`${t.name}: skipped in Settings`); return; }
           if (dst.getSheetByName(t.name)) { done.push(`${t.name}: already exists`); return; }
           t.sheet.copyTo(dst).setName(t.name);
           done.push(`${t.name}: created`);
