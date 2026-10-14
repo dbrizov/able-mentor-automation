@@ -2,6 +2,7 @@ import os
 import re
 import html
 import difflib
+import logging
 import tempfile
 import pandas as pd
 from pathlib import Path
@@ -21,6 +22,9 @@ PART_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_part.html"
 CARD_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_card.html"
 FIELD_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_field.html"
 RATING_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_rating.html"
+
+logging.basicConfig(filename=f"{CURRENT_DIRECTORY}/student_profiles.log", filemode="w", encoding="utf-8",
+                    level=logging.INFO, format="%(message)s")
 
 # Parts of the profile, each with its own cards
 APPLICATION_PART_TITLE = "Кандидатура на ученика"
@@ -134,6 +138,11 @@ INFO_MEETING_SECTIONS = [
         ("Ако трябва да опишеш идеалния ментор за този ученик с 3 думи:", ["Ако трябва да опишеш"]),
     ]),
 ]
+
+
+def log(message: str):
+    print(message)
+    logging.info(message)
 
 
 def read_register(csv_file_path: str) -> pd.DataFrame:
@@ -318,16 +327,19 @@ def create_pdfs():
                 name_counters[name] = name_counters.get(name, 0) + 1
                 file_name = f"{name}_{name_counters[name]}"
 
+            file_path = f"{OUTPUT_DIRECTORY}/{file_name}.pdf"
+
             meeting_row = None
             student_meeting_rows = find_info_meetings(meeting_rows, name)
+            register_name_count = register_name_counts[normalize_name(name)]
             if not student_meeting_rows:
-                print(f"no info meeting for {name}")
-            elif register_name_counts[normalize_name(name)] > 1 or len(student_meeting_rows) > 1:
-                print(f"skip the info meeting for {name}: the name isn't unique, it's not clear whose info meeting it is")
+                log(f"no info meeting for {name} ({file_name}.pdf)")
+            elif register_name_count > 1 or len(student_meeting_rows) > 1:
+                log(f"skip the info meeting for {name} ({file_name}.pdf): the name isn't unique - "
+                    f"students in the register: {register_name_count}, info meetings: {len(student_meeting_rows)}")
             else:
                 meeting_row = student_meeting_rows[0]
 
-            file_path = f"{OUTPUT_DIRECTORY}/{file_name}.pdf"
             create_pdf(register, row, meetings, meeting_row, file_path, page, temp_directory)
             print(f"created {file_path}")
 
