@@ -1,8 +1,7 @@
 :root {
     --page-color: #191643;          /* dark navy */
     --page-text-color: #FFFFFF;
-    --subtitle-color: #FFC696;      /* peach */
-    --accent-color: #F64C10;        /* orange, for the arrows and the section numbers */
+    --accent-color: #F64C10;        /* orange, for the section numbers */
     --card-text-color: #130F33;     /* navy, also for the timeline on the left of the cards */
 }
 
@@ -20,7 +19,7 @@
     @top-right {
         content: image-set(url("../images/logo_white.png") 10.34x);
         vertical-align: middle;
-        padding-right: 2cm;
+        padding-right: 0.72cm;  /* as far from the right as the logo is from the top */
     }
 
     @bottom-center {
@@ -49,22 +48,12 @@ body {
     bottom: 0;
     height: 25.1cm;
     z-index: -1;
+    clip-path: inset(0.5mm);    /* the PDF repeats the picture, without it a hair of the comb shows at the bottom */
 }
 
 h1 {
     margin: 0 0 4pt;
     font-size: 30pt;
-}
-
-.subtitle {
-    margin: 0;
-    font-size: 12pt;
-    color: var(--subtitle-color);
-}
-
-.arrow {
-    color: var(--accent-color);
-    font-weight: bold;
 }
 
 h2 {
@@ -81,12 +70,28 @@ h2 .number {
 
 .warm {
     --card-color: #FFC696;
-    background: #97A7FF url("../images/background_cold.png") center / cover;
+    --frame-background: #97A7FF url("../images/background_cold.png") center / cover;
 }
 
 .cold {
     --card-color: #97A6FF;
-    background: #FFC596 url("../images/background_warm.png") center / cover;
+    --frame-background: #FFC596 url("../images/background_warm.png") center / cover;
+}
+
+.part {
+    margin-top: 26pt;
+}
+
+.part ~ .part {
+    break-before: page;
+    margin-top: 0;
+}
+
+.part-title {
+    color: var(--card-color);
+    font-size: 18pt;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 .frame, .card {
@@ -95,6 +100,7 @@ h2 .number {
 }
 
 .frame {
+    background: var(--frame-background);
     padding: 0.225cm;
     border-radius: 0.78cm;  /* the card's radius + the padding, so the frame is equally thick at the corners */
 }
@@ -111,28 +117,37 @@ h2 .number {
     border-left: 1.5pt dotted var(--card-text-color);
 }
 
-.ring {
+.field {
+    position: relative;
+    break-inside: avoid;
+}
+
+.field:first-child {
+    padding-top: 0.45cm;
+}
+
+.field:last-child {
+    padding-bottom: 0.45cm;
+}
+
+.field:first-child::before, .field:last-child::after {
+    content: "";
+    position: absolute;
+    left: calc(-0.7cm - 0.75pt - 0.15cm);
     width: 0.3cm;
     height: 0.3cm;
-    margin-left: calc(-0.7cm - 0.75pt - 0.15cm);
     box-sizing: border-box;
     border: 1.6pt solid var(--card-text-color);
     border-radius: 50%;
     background: var(--card-color);
 }
 
-.ring.start {
-    margin-bottom: 2pt;
-    break-after: avoid;
+.field:first-child::before {
+    top: 0;
 }
 
-.ring.end {
-    margin-top: 4pt;
-    break-before: avoid;
-}
-
-.field {
-    break-inside: avoid;
+.field:last-child::after {
+    bottom: 0;
 }
 
 .field + .field {
@@ -153,4 +168,30 @@ h2 .number {
 
 .bullet + .bullet {
     margin-top: 2pt;
+}
+
+.rating {
+    display: flex;
+    align-items: center;
+    gap: 3.5pt;
+}
+
+.rating span {
+    width: 9pt;
+    height: 9pt;
+    box-sizing: border-box;
+    border: 1.4pt solid var(--card-text-color);
+    border-radius: 50%;
+}
+
+.rating span:last-of-type {
+    margin-right: 3pt;
+}
+
+.rating-1 span:nth-child(-n + 1),
+.rating-2 span:nth-child(-n + 2),
+.rating-3 span:nth-child(-n + 3),
+.rating-4 span:nth-child(-n + 4),
+.rating-5 span:nth-child(-n + 5) {
+    background: var(--card-text-color);
 }

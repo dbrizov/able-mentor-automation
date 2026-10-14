@@ -1,5 +1,7 @@
 import os
+import re
 import html
+import difflib
 import tempfile
 import pandas as pd
 from pathlib import Path
@@ -11,10 +13,18 @@ CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles"
 REGISTER_FILE_NAME = "register_students.csv"
 REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
+INFO_MEETING_FILE_NAME = "students_info_meeting.csv"
+INFO_MEETING_FILE_PATH = f"{CURRENT_DIRECTORY}/{INFO_MEETING_FILE_NAME}"
 HTML_DIRECTORY = f"{os.path.dirname(CURRENT_DIRECTORY)}/html"
 PAGE_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_page.html"
+PART_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_part.html"
 CARD_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_card.html"
 FIELD_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_field.html"
+RATING_TEMPLATE_FILE_PATH = f"{HTML_DIRECTORY}/student_profile_rating.html"
+
+# Parts of the profile, each with its own cards
+APPLICATION_PART_TITLE = "Кандидатура на ученика"
+INFO_MEETING_PART_TITLE = "Записки от инфо среща"
 
 # Themes of the cards, CSS classes in css/student_profile.css.
 # The student's data is on warm cards, the information from the team is on cold ones.
@@ -34,9 +44,21 @@ STUDENT_FIRST_NAME = "Име"
 STUDENT_LAST_NAME = "Фамилия"
 STUDENT_STATUS = "Статус"
 
+# Column names in the info meeting csv file. A student is found by name, which is typed by hand, so small typos are
+# allowed (a similarity of the names of at least NAME_MATCH_RATIO). If the name isn't unique (in the register or in the
+# info meetings), it's not clear whose info meeting it is, so the profile is without it.
+INFO_MEETING_STUDENT_NAME = "Име на ученика"
+NAME_MATCH_RATIO = 0.9
+
+# Kinds of fields: a text, a rating from 1 to 5 (shown as dots), or choices separated by commas (shown as a list)
+TEXT_FIELD = "text"
+RATING_FIELD = "rating"
+CHOICES_FIELD = "choices"
+
 # Sections of the profile: (section title, fields). Each field is a title and a value in the section's card:
-# (title, columns). The values of several columns are joined on separate lines. Empty fields and sections are skipped.
-PROFILE_SECTIONS = [
+# (title, columns) or (title, columns, kind). The values of several columns are joined on separate lines.
+# Empty fields and sections are skipped.
+APPLICATION_SECTIONS = [
     ("Основна информация", [
         ("Удобен формат", ["Удобен Формат"]),
         ("В кой град предпочитате", ["В кой град предпочитате"]),
@@ -89,6 +111,30 @@ PROFILE_SECTIONS = [
     ]),
 ]
 
+INFO_MEETING_SECTIONS = [
+    ("Цел и идея", [
+        ("С каква основна цел влиза ученикът в ABLE Mentor?", ["С каква основна цел"]),
+        ("Какво точно иска да постигне с нас?", ["Какво точно иска да постигне"]),
+        ("Каква е идеята, която иска да развие?", ["Каква е идеята"]),
+    ]),
+    ("Впечатления от срещата", [
+        ("Какво най-много ти направи впечатление в ученика?", ["Какво най-много ти направи впечатление"]),
+        ("Как би определил/а енергията и темпото на ученика?", ["Как би определил/а енергията"], RATING_FIELD),
+        ("Колко структурирано мисли и говори ученикът?", ["Колко структурирано мисли"], RATING_FIELD),
+        ("Колко мотивиран изглежда ученикът да работи по целта си?", ["Колко мотивиран"], RATING_FIELD),
+        ("Колко ясна е целта му в момента?", ["Колко ясна е целта"], RATING_FIELD),
+        ("Колко самостоятелен изглежда в начина, по който подхожда към целта си?", ["Колко самостоятелен"],
+         RATING_FIELD),
+        ("Как комуникира в разговора?", ["Как комуникира"], RATING_FIELD),
+        ("Колко уверен изглежда, когато говори за себе си и идеята си?", ["Колко уверен"], RATING_FIELD),
+    ]),
+    ("Подходящ ментор", [
+        ("Какъв тип подкрепа би била най-полезна за този ученик?", ["Какъв тип подкрепа"], CHOICES_FIELD),
+        ("Какво според теб този ученик най-много търси в своя ментор?", ["Какво според теб"]),
+        ("Ако трябва да опишеш идеалния ментор за този ученик с 3 думи:", ["Ако трябва да опишеш"]),
+    ]),
+]
+
 
 def read_register(csv_file_path: str) -> pd.DataFrame:
     register = pd.read_csv(csv_file_path, dtype=str, encoding="utf-8").fillna("")
@@ -122,15 +168,52 @@ def join_texts(texts: list[str]) -> str:
     return "\n".join(texts)
 
 
-def get_rows(register: pd.DataFrame, row, fields: list[tuple[str, list[str]]]) -> list[tuple[str, str]]:
-    # The (title, value) of the fields with a value
+def get_rows(register: pd.DataFrame, row, fields: list[tuple]) -> list[tuple[str, str, str]]:
+    # The (title, value, kind) of the fields with a value
     rows = list()
-    for title, columns in fields:
-        value = join_texts([get_value(register, row, column) for column in columns])
+    for title, columns, *kind in fields:
+        kind = kind[0] if kind else TEXT_FIELD
+        texts = [get_value(register, row, column) for column in columns]
+        if kind == CHOICES_FIELD:
+            # The choices are separated by ", " and start with a capital letter
+            texts = [choice for text in texts for choice in re.split(r",\s*(?=[А-ЯA-Z])", text)]
+
+        value = join_texts(texts)
         if value and title not in HIDDEN_FIELDS:
-            rows.append((title, value))
+            rows.append((title, value, kind))
 
     return rows
+
+
+# ---------- Info meeting ----------
+
+def normalize_name(name: str) -> str:
+    return re.sub(r"\s+", " ", name).strip().casefold()
+
+
+def read_info_meetings(csv_file_path: str) -> tuple[pd.DataFrame, dict]:
+    # The info meetings and {normalized student name: [rows]}
+    meetings = read_register(csv_file_path)
+    rows = dict()
+    for _, row in meetings.iterrows():
+        rows.setdefault(normalize_name(get_value(meetings, row, INFO_MEETING_STUDENT_NAME)), list()).append(row)
+
+    return meetings, rows
+
+
+def find_info_meetings(meeting_rows: dict, name: str) -> list:
+    # The rows of the info meetings with the student's name, or with a similar name if there are none.
+    # The names are compared with their words sorted, so a swapped first and last name match too.
+    name = normalize_name(name)
+    if name in meeting_rows:
+        return meeting_rows[name]
+
+    def sort_words(text: str) -> str:
+        return " ".join(sorted(text.split()))
+
+    return [row for other, rows in meeting_rows.items()
+            if difflib.SequenceMatcher(None, sort_words(name), sort_words(other)).ratio() >= NAME_MATCH_RATIO
+            for row in rows]
 
 
 # ---------- HTML ----------
@@ -145,37 +228,52 @@ def read_template(file_path: str) -> Template:
         return Template(fstream.read())
 
 
-def make_field(title: str, value: str) -> str:
-    # Every line of the value is a div, the "- " lines are bullets with a hanging indent
-    lines = [f'<div class="bullet">{html.escape(line)}</div>' if line.startswith("- ")
-             else f"<div>{html.escape(line)}</div>" for line in value.split("\n")]
+def make_field(title: str, value: str, kind: str) -> str:
+    if kind == RATING_FIELD and value in ["1", "2", "3", "4", "5"]:
+        lines = [read_template(RATING_TEMPLATE_FILE_PATH).substitute(value=value)]
+    else:
+        # Every line of the value is a div, the "- " lines are bullets with a hanging indent
+        lines = [f'<div class="bullet">{html.escape(line)}</div>' if line.startswith("- ")
+                 else f"<div>{html.escape(line)}</div>" for line in value.split("\n")]
+
     return read_template(FIELD_TEMPLATE_FILE_PATH).substitute(title=html.escape(title), lines="\n".join(lines))
 
 
-def make_card(number: int, title: str, rows: list[tuple[str, str]], theme: str) -> str:
-    fields = [make_field(field_title, value) for field_title, value in rows]
+def make_card(number: int, title: str, rows: list[tuple[str, str, str]], theme: str) -> str:
+    fields = [make_field(field_title, value, kind) for field_title, value, kind in rows]
     return read_template(CARD_TEMPLATE_FILE_PATH).substitute(
         number=f"{number:02d}", title=html.escape(title), theme=theme, fields="\n".join(fields))
 
 
-def make_html(register: pd.DataFrame, row) -> str:
+def make_part(title: str, table: pd.DataFrame, row, sections: list[tuple], theme: str) -> str:
+    # A part of the profile with a card for every section, the cards are numbered from 1 in every part
     cards = list()
-    for section_title, fields in PROFILE_SECTIONS:
-        rows = get_rows(register, row, fields)
+    for section_title, fields in sections:
+        rows = get_rows(table, row, fields)
         if rows:
-            cards.append(make_card(len(cards) + 1, section_title, rows, WARM_THEME))
+            cards.append(make_card(len(cards) + 1, section_title, rows, theme))
+
+    return read_template(PART_TEMPLATE_FILE_PATH).substitute(
+        title=html.escape(title), theme=theme, cards="\n".join(cards))
+
+
+def make_html(register: pd.DataFrame, row, meetings: pd.DataFrame, meeting_row) -> str:
+    parts = [make_part(APPLICATION_PART_TITLE, register, row, APPLICATION_SECTIONS, WARM_THEME)]
+    if meeting_row is not None:
+        parts.append(make_part(INFO_MEETING_PART_TITLE, meetings, meeting_row, INFO_MEETING_SECTIONS, COLD_THEME))
 
     return read_template(PAGE_TEMPLATE_FILE_PATH).substitute(base_url=f"{to_url(HTML_DIRECTORY)}/",
-                                                             cards="\n".join(cards))
+                                                             parts="\n".join(parts))
 
 
 # ---------- PDF ----------
 
-def create_pdf(register: pd.DataFrame, row, file_path: str, page: Page, temp_directory: str):
+def create_pdf(register: pd.DataFrame, row, meetings: pd.DataFrame, meeting_row, file_path: str, page: Page,
+               temp_directory: str):
     # The HTML is a file, so it can use the local pictures and font. The PDF has the page size and margins of the CSS.
     html_file_path = f"{temp_directory}/profile.html"
     with open(html_file_path, encoding="utf-8", mode="w") as fstream:
-        fstream.write(make_html(register, row))
+        fstream.write(make_html(register, row, meetings, meeting_row))
 
     page.goto(to_url(html_file_path))
     page.evaluate("document.fonts.ready")
@@ -187,15 +285,19 @@ def create_pdfs():
         os.mkdir(OUTPUT_DIRECTORY)
 
     register = read_register(REGISTER_FILE_PATH)
+    meetings, meeting_rows = read_info_meetings(INFO_MEETING_FILE_PATH)
     students = list()
+    register_name_counts = dict()  # of all the students, a name of any of them can be in the info meetings
     for _, row in register.iterrows():
         name = f"{get_value(register, row, STUDENT_FIRST_NAME)} {get_value(register, row, STUDENT_LAST_NAME)}".strip()
         if not name:
             continue
 
+        register_name_counts[normalize_name(name)] = register_name_counts.get(normalize_name(name), 0) + 1
+
         status = get_value(register, row, STUDENT_STATUS)
         if status.casefold() not in PROFILE_STATUSES:
-            # print(f"skip student {name}: {status or 'no status'}")
+            print(f"skip student {name}: {status or 'no status'}")
             continue
 
         students.append((name, row))
@@ -216,8 +318,17 @@ def create_pdfs():
                 name_counters[name] = name_counters.get(name, 0) + 1
                 file_name = f"{name}_{name_counters[name]}"
 
+            meeting_row = None
+            student_meeting_rows = find_info_meetings(meeting_rows, name)
+            if not student_meeting_rows:
+                print(f"no info meeting for {name}")
+            elif register_name_counts[normalize_name(name)] > 1 or len(student_meeting_rows) > 1:
+                print(f"skip the info meeting for {name}: the name isn't unique, it's not clear whose info meeting it is")
+            else:
+                meeting_row = student_meeting_rows[0]
+
             file_path = f"{OUTPUT_DIRECTORY}/{file_name}.pdf"
-            create_pdf(register, row, file_path, page, temp_directory)
+            create_pdf(register, row, meetings, meeting_row, file_path, page, temp_directory)
             print(f"created {file_path}")
 
         browser.close()
