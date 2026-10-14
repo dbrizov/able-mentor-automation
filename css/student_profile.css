@@ -1,0 +1,156 @@
+:root {
+    --page-color: #191643;          /* dark navy */
+    --page-text-color: #FFFFFF;
+    --subtitle-color: #FFC696;      /* peach */
+    --accent-color: #F64C10;        /* orange, for the arrows and the section numbers */
+    --card-text-color: #130F33;     /* navy, also for the timeline on the left of the cards */
+}
+
+@font-face {
+    font-family: "Google Sans";     /* the font of the deck, embedded in the PDFs */
+    src: url("../fonts/GoogleSans.ttf") format("truetype");
+    font-weight: 400 700;
+}
+
+@page {
+    size: A4;
+    margin: 2.6cm 0 2cm;
+    background: #191643;
+
+    @top-right {
+        content: image-set(url("../images/logo_white.png") 10.34x);
+        vertical-align: middle;
+        padding-right: 2cm;
+    }
+
+    @bottom-center {
+        content: counter(page);
+        color: #FFC696;
+        font: 9pt "Google Sans", Arial, sans-serif;
+    }
+}
+
+html, body {
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+body {
+    padding: 0 2cm;
+    font: 10.5pt/1.3 "Google Sans", Arial, sans-serif;
+    font-feature-settings: "locl" 0;    /* the standard Cyrillic letters like in the deck, not the Bulgarian forms */
+    color: var(--page-text-color);
+}
+
+.watermark {
+    position: fixed;
+    right: -6.0cm;
+    bottom: 0;
+    height: 25.1cm;
+    z-index: -1;
+}
+
+h1 {
+    margin: 0 0 4pt;
+    font-size: 30pt;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 12pt;
+    color: var(--subtitle-color);
+}
+
+.arrow {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+h2 {
+    margin: 22pt 0 8pt;
+    font-size: 15pt;
+    break-after: avoid;
+}
+
+h2 .number {
+    margin-right: 8pt;
+    font-size: 22pt;
+    color: var(--accent-color);
+}
+
+.warm {
+    --card-color: #FFC696;
+    background: #97A7FF url("../images/background_cold.png") center / cover;
+}
+
+.cold {
+    --card-color: #97A6FF;
+    background: #FFC596 url("../images/background_warm.png") center / cover;
+}
+
+.frame, .card {
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+.frame {
+    padding: 0.225cm;
+    border-radius: 0.78cm;  /* the card's radius + the padding, so the frame is equally thick at the corners */
+}
+
+.card {
+    padding: 0.3cm 0.6cm 0.3cm 0.45cm;
+    border-radius: 0.55cm;
+    background: var(--card-color);
+    color: var(--card-text-color);
+}
+
+.timeline {
+    padding-left: 0.7cm;
+    border-left: 1.5pt dotted var(--card-text-color);
+}
+
+.ring {
+    width: 0.3cm;
+    height: 0.3cm;
+    margin-left: calc(-0.7cm - 0.75pt - 0.15cm);
+    box-sizing: border-box;
+    border: 1.6pt solid var(--card-text-color);
+    border-radius: 50%;
+    background: var(--card-color);
+}
+
+.ring.start {
+    margin-bottom: 2pt;
+    break-after: avoid;
+}
+
+.ring.end {
+    margin-top: 4pt;
+    break-before: avoid;
+}
+
+.field {
+    break-inside: avoid;
+}
+
+.field + .field {
+    margin-top: 11pt;
+}
+
+.field-title {
+    margin-bottom: 2pt;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.bullet {
+    padding-left: 0.35cm;
+    text-indent: -0.35cm;
+}
+
+.bullet + .bullet {
+    margin-top: 2pt;
+}
