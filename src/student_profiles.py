@@ -1,121 +1,148 @@
 import os
-import csv
 import docx
-import math
+import pandas as pd
 
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 OUTPUT_DIRECTORY = f"{CURRENT_DIRECTORY}/student_profiles"
-REGISTER_FILE_NAME = "student_register.csv"
+REGISTER_FILE_NAME = "register_students.csv"
 REGISTER_FILE_PATH = f"{CURRENT_DIRECTORY}/{REGISTER_FILE_NAME}"
 
+# Only students with one of these statuses get a profile (matched case-insensitive)
+PROFILE_STATUSES = ["in process", "matched"]
 
-def get_column_index(column):
-    # 26 number system where [A...Z] is mapped to [1...26]
-    decimal_value = 0
-    for idx in reversed(range(0, len(column))):
-        decimal_value += (ord(column[idx]) - ord("A") + 1) * math.pow(26, len(column) - idx - 1)
+# Column names in the students' csv file (matched case-insensitive, long names by their beginning)
+STUDENT_FIRST_NAME = "Име"
+STUDENT_LAST_NAME = "Фамилия"
+STUDENT_STATUS = "Статус"
 
-    return int(decimal_value - 1)  # the index is the decimal value minus 1
-
-
-CONFIRMED = get_column_index("O")
-STUDENT_NAME = get_column_index("AF")
-AGE = get_column_index("AL")
-CITY = get_column_index("AN")
-SCHOOL_NAME = get_column_index("AM")
-GRADE = get_column_index("AO")
-SCHOOL_INTERESTS = get_column_index("AP")
-NON_SCHOOL_INTERESTS = get_column_index("AQ")
-SIMILAR_PROGRAMS = get_column_index("AR")
-NEED = get_column_index("AS")
-ENGLISH_LEVEL = get_column_index("AT")
-SPORT = get_column_index("AU")
-WHAT_TO_DO_AFTER_SCHOOL = get_column_index("AV")
-INTERESTS = get_column_index("AW")
-MENTOR_EXPERIENCE = get_column_index("AX")
-SKILLS_TO_IMPROVE = get_column_index("AY")
-FREE_TIME_ACTIVITIES = get_column_index("AZ")
-DIFFICULT_SITUATION = get_column_index("BA")
-WHY_APPLY = get_column_index("BB")
-IDEA_IN_ABLE_MENTOR = get_column_index("BC")
-WANT_TO_CHANGE = get_column_index("BD")
-HOURS_PER_WEEK = get_column_index("BE")
-PROJECT_WITH_MENTOR = get_column_index("BF")
-HEARD_OF_ABLE_MENTOR = get_column_index("BG")
-
-column_titles = {
-    CONFIRMED: "Потвърдил участие",
-    STUDENT_NAME: "Ученик",
-    AGE: "Възраст",
-    CITY: "Населено място",
-    SCHOOL_NAME: "Училище",
-    GRADE: "Завършен клас",
-    SCHOOL_INTERESTS: "Интереси, свързани с училище",
-    NON_SCHOOL_INTERESTS: "Интереси извън училище",
-    SIMILAR_PROGRAMS: "Участвал ли си в други сходни програми, завършил ли си ги и какво си взе от тях?",
-    NEED: "ABLE Mentor е напълно безплатна програма с ограничен капацитет. Защо имаш нужда да участваш в нея?",
-    ENGLISH_LEVEL: "Ниво на английски език",
-    SPORT: "Спорт",
-    WHAT_TO_DO_AFTER_SCHOOL: "Какво ще правя след гимназията:",
-    INTERESTS: "В кои сфери имаш интерес да се развиваш и в кои по-слаб?",
-    MENTOR_EXPERIENCE: "Ментор в каква професионална сфера би бил/а най-полезен/а за теб?",
-    SKILLS_TO_IMPROVE: "Кои свои качества искаш да промениш/подобриш?",
-    FREE_TIME_ACTIVITIES: "Как се забавляваш в свободното си време?",
-    DIFFICULT_SITUATION: "Разкажи ни за трудна ситуация и как си се справил/а?",
-    WHY_APPLY: "Защо кандидатстваш в програмата?",
-    IDEA_IN_ABLE_MENTOR: "Каква идея искаш да осъществиш в рамките на ABLE Mentor?",
-    WANT_TO_CHANGE: "Желая да променя...",
-    HOURS_PER_WEEK: "По колко часа седмично би отделял/а на проекта?",
-    PROJECT_WITH_MENTOR: "По какъв проект би работил/а със своя ментор?",
-    HEARD_OF_ABLE_MENTOR: "Научил/а за ABLE Mentor от?"
-}
+# Rows of the profile table: (title, columns). The values of several columns are joined on separate lines.
+PROFILE_FIELDS = [
+    ("Удобен формат", ["Удобен Формат"]),
+    ("В кой град предпочитате", ["В кой град предпочитате"]),
+    ("Населено място", ["Населено Място"]),
+    ("Възраст", ["Възраст"]),
+    ("Ниво на английски език", ["Английски Език Ниво"]),
+    ("Образование и кариера", ["Образование И Кариера"]),
+    ("Училище", ["Училище"]),
+    ("Завършен клас", ["Последно Завършен Клас"]),
+    ("Любими предмети и дейности в училище", ["Любими Предмети И Дейности В Училище"]),
+    ("Какво ще правя след гимназията", ["Какво Ще Правиш След Гимназията"]),
+    ("За теб извън училище", ["За Теб Извън Училище"]),
+    ("Интереси извън училище", ["Интереси Извън Училище"]),
+    ("Разкажи ни за лично предизвикателство и как си го превъзмогнал/а?", ["Разкажете Ни За Ваше Лично Предизвикателство"]),
+    ("Кой би бил ти в екип? (подредени по предпочитание)",
+     ["Кой Би Бил Ти В Екип", "Избор 2", "Избор 3", "Избор 4", "Избор  5", "Избор 6"]),
+    ("По колко часа седмично би отделял/а на проекта?", ["Средно по колко часа"]),
+    ("Защо имаш нужда да участваш в програмата?", ["Защо имаш нужда да участваш"]),
+    ("Участвал ли си в други сходни програми, завършил ли си ги и какво си взе от тях?",
+     ["Участвал ли си в други сходни програми"]),
+    ("По какъв проект би работил/а със своя ментор? (подредени по предпочитание)",
+     ["По какъв проект", "проект 2", "проект 3", "проект 4"]),
+    ("Можеш да добавиш няколко аспекта и да ги подредиш по важност.",
+     ["Можеш да добавиш няколко аспекта и да ги подредиш по важност."]),
+    ("Кое твърдение за теб по отношение на кариерната и академичната насока е вярно?",
+     ["Кое твърдение за теб по отношение на кариерната"]),
+    ("Кое твърдение за теб по отношение на участието ти в програмата е вярно?",
+     ["Кое твърдение за теб по отношение на участието"]),
+    ("Кажи повече за това твърдение", ["кажи повече за това твърдение"]),
+    ("Сфери, които са ти интересни, и/или в които искаш да се развиеш",
+     ["Сфери, които са ти интересни", "сфера 1", "повече за сфера 1", "сфера 2", "повече за сфера 2", "сфера 3",
+      "повече за сфера 3"]),
+    # pandas renames the 2nd of two equal headers to "<header>.1"
+    ("Можеш да добавиш няколко аспекта и да ги подредиш по важност.",
+     ["Можеш да добавиш няколко аспекта и да ги подредиш по важност..1"]),
+    ("Има ли специфична сфера, различна от избраните, в която би искал/а менторът ти да има опит и защо?",
+     ["Има ли специфична сфера"]),
+    ("Кои аспекти на работата с ментора ще са най-полезни? (подредени по важност)",
+     ["Кои аспекти на работата с ментора", "избери аспект 1", "избери аспект 2"]),
+    ("Научил/а за ABLE Mentor от?", ["Откъде разбрахте"]),
+]
 
 
-def try_create_doc(row_data, file_path):
-    if row_data[CONFIRMED] != "Да":
-        return False
+def read_register(csv_file_path: str) -> pd.DataFrame:
+    register = pd.read_csv(csv_file_path, dtype=str, encoding="utf-8").fillna("")
+    register.columns = [column.strip() for column in register.columns]
+    return register
 
+
+def find_column(register: pd.DataFrame, column_name: str) -> str:
+    column_name = column_name.casefold()
+    for column in register.columns:
+        if column.casefold() == column_name:
+            return column
+
+    columns = [column for column in register.columns if column.casefold().startswith(column_name)]
+    if len(columns) != 1:
+        raise KeyError(f"Expected one column starting with '{column_name}', found {len(columns)}")
+
+    return columns[0]
+
+
+def get_value(register: pd.DataFrame, row, column_name: str) -> str:
+    return row[find_column(register, column_name)].strip()
+
+
+def join_texts(texts: list[str]) -> str:
+    # Several values are shown as a list, one "- value" per line
+    texts = [text for text in texts if text and text != "---"]
+    if len(texts) > 1:
+        texts = [f"- {text}" for text in texts]
+
+    return "\n".join(texts)
+
+
+def create_doc(register: pd.DataFrame, row, file_path: str):
     doc = docx.Document()
     doc.add_heading("ПРОФИЛ НА ТВОЯ УЧЕНИК", 0)
 
     table = doc.add_table(rows=0, cols=2)
 
-    for idx in range(0, len(row_data)):
-        if (idx == CONFIRMED or
-            idx == STUDENT_NAME or
-                idx not in column_titles):
+    for title, columns in PROFILE_FIELDS:
+        value = join_texts([get_value(register, row, column) for column in columns])
+        if not value:
             continue
 
-        if idx > HEARD_OF_ABLE_MENTOR:
-            break
-
         table_row = table.add_row().cells
-        table_row[0].text = column_titles[idx]
-        table_row[1].text = row_data[idx]
+        table_row[0].text = title
+        table_row[1].text = value
 
     doc.save(file_path)
-    return True
 
 
 def create_docs():
     if not os.path.exists(OUTPUT_DIRECTORY):
         os.mkdir(OUTPUT_DIRECTORY)
 
-    doc_counter = 1  # Start a simple counter for numbering the files
+    register = read_register(REGISTER_FILE_PATH)
+    students = list()
+    for _, row in register.iterrows():
+        name = f"{get_value(register, row, STUDENT_FIRST_NAME)} {get_value(register, row, STUDENT_LAST_NAME)}".strip()
+        if not name:
+            continue
 
-    with open(REGISTER_FILE_PATH, encoding="utf-8", mode="r") as fstream:
-        reader = csv.reader(fstream, delimiter=',', quotechar='"')
+        status = get_value(register, row, STUDENT_STATUS)
+        if status.casefold() not in PROFILE_STATUSES:
+            # print(f"skip student {name}: {status or 'no status'}")
+            continue
 
-        for idx, row in enumerate(reader):
-            if idx == 0:
-                continue
+        students.append((name, row))
 
-            student_name = row[STUDENT_NAME]
-            file_path = f"{OUTPUT_DIRECTORY}/{doc_counter}_{student_name}.docx"
+    # Students with equal names get a number suffix, so their files don't overwrite each other
+    name_counts = dict()
+    for name, _ in students:
+        name_counts[name] = name_counts.get(name, 0) + 1
 
-            if try_create_doc(row, file_path):
-                doc_counter += 1  # Increment the counter only if the document is created successfully
+    name_counters = dict()
+    for name, row in students:
+        file_name = name
+        if name_counts[name] > 1:
+            name_counters[name] = name_counters.get(name, 0) + 1
+            file_name = f"{name}_{name_counters[name]}"
+
+        file_path = f"{OUTPUT_DIRECTORY}/{file_name}.docx"
+        create_doc(register, row, file_path)
+        print(f"created {file_path}")
 
 
 if __name__ == "__main__":
