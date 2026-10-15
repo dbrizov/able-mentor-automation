@@ -70,12 +70,12 @@ h2 .number {
 
 .warm {
     --card-color: #FFC696;
-    --frame-background: #97A7FF url("../images/background_cold.png") center / cover;
+    --frame-background: #97A7FF;
 }
 
 .cold {
     --card-color: #97A6FF;
-    --frame-background: #FFC596 url("../images/background_warm.png") center / cover;
+    --frame-background: #FFC596;
 }
 
 .part {
