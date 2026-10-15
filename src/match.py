@@ -18,7 +18,7 @@ AI_MODEL_NAME = "BAAI/bge-m3"
 AI_MODEL_FILE_PATH = f"{CURRENT_DIRECTORY}/ai_models/bge-m3"
 
 # Number of mentor suggestions per student
-TOP_N = 3
+TOP_N = 5
 
 # Comparison weights
 SEMANTIC_WEIGHT = 40
@@ -91,6 +91,10 @@ MAX_AXIS_DIFF = 4
 
 # Score for a comparison where one of the values is missing
 UNKNOWN_SCORE = 0.5
+
+# Answers without meaning (compared case-insensitive, without the trailing dot), they are left out of the semantic texts
+FILLER_ANSWERS = ["---", "не", "няма", "не знам", "не се сещам", "не искам", "не съм сигурен", "не съм сигурна",
+                  "няма друга сфера"]
 
 
 class PersonData:
@@ -183,8 +187,20 @@ def parse_axis(axis: str):
         return None
 
 
+def remove_filler_answers(text: str) -> str:
+    # Also removes them from lists like "Музика · Не съм сигурен"
+    lines = list()
+    for line in text.split("\n"):
+        items = [item for item in line.split(" · ") if item.strip(" .").casefold() not in FILLER_ANSWERS]
+        if items:
+            lines.append(" · ".join(items))
+
+    return "\n".join(lines)
+
+
 def join_texts(texts: list[str]) -> str:
-    return "\n".join(text for text in texts if text and text != "---")
+    texts = [remove_filler_answers(text) for text in texts]
+    return "\n".join(text for text in texts if text)
 
 
 def extract_students(csv_file_path: str) -> list[PersonData]:
