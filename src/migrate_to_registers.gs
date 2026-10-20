@@ -166,20 +166,28 @@ function buildPlan() {
     const src = readTab(ss.getSheetByName(tab), tab);
     const iEmail = src.col(EMAIL_COLUMN);
     const iCity = src.col(CITY_COLUMN);
-    const firstRow = {};      // email -> row number of the first submission
-    const dupes = {};         // email -> [row numbers of skipped repeats]
     const noEmail = [];
+
+    // Same email submitted more than once: keep the LATEST submission (usually the corrected one).
+    const lastIndex = {};     // email -> index of the latest row with that email
+    src.rows.forEach((row, i) => {
+      const email = normEmail(row[iEmail]);
+      if (email) lastIndex[email] = i;
+    });
+    const keptRow = {};       // email -> row number that is migrated
+    const dupes = {};         // email -> [row numbers of skipped earlier submissions]
 
     src.rows.forEach((row, i) => {
       const rowNum = src.rowNums[i];
       const email = normEmail(row[iEmail]);
       if (!email) { noEmail.push(rowNum); return; }
-      if (email in firstRow) {                    // same email twice in the form: keep the first
+      if (i !== lastIndex[email]) {
         (dupes[email] = dupes[email] || []).push(rowNum);
         return;
       }
-      firstRow[email] = rowNum;
+      keptRow[email] = rowNum;
 
+      // Only the city column decides the register; empty city -> "Онлайн".
       const city = String(row[iCity]).trim() || ONLINE;
       if (!byCity[city]) byCity[city] = {};
       if (!byCity[city][tab]) byCity[city][tab] = [];
@@ -192,14 +200,19 @@ function buildPlan() {
     const dupEmails = Object.keys(dupes);
     if (dupEmails.length) {
       const skipped = dupEmails.reduce((n, e) => n + dupes[e].length, 0);
-      notes.push(`⚠ ${tab}: ${dupEmails.length} emails appear more than once — kept the first row, skipped ${skipped}:`);
-      dupEmails.forEach(e => notes.push(`    ${e} — kept row ${firstRow[e]}, skipped ${dupes[e].length > 1 ? "rows" : "row"} ${dupes[e].join(", ")}`));
+      notes.push(`⚠ ${tab}: ${dupEmails.length} emails appear more than once — kept the latest row, skipped ${skipped}:`);
+      dupEmails.forEach(e => notes.push(`    ${e} — kept row ${keptRow[e]}, skipped ${dupes[e].length > 1 ? "rows" : "row"} ${dupes[e].join(", ")}`));
     }
   });
 
   const lines = [];
   const jobs = [];
   let totalNew = 0;
+
+  // Email is unique across ALL registers: someone already in another city's register
+  // (e.g. migrated from an earlier submission) is not added to a second one.
+  const everywhere = emailsInAllRegisters(settings);
+  const elsewhere = [];
 
   Object.keys(byCity).sort().forEach(city => {
     const id = settings[city];
@@ -251,22 +264,59 @@ function buildPlan() {
 
       const iEmail = target.col(EMAIL_COLUMN);
       const existing = new Set(target.rows.map(r => normEmail(r[iEmail])).filter(Boolean));
-      const fresh = people.filter(p => !existing.has(p.email));
+      const notHere = people.filter(p => !existing.has(p.email));
+      const fresh = notHere.filter(p => {
+        const other = everywhere[tab][p.email];
+        if (other && other !== city) {
+          elsewhere.push(`    ${tab}: ${p.email} → wants ${city}, already in the ${other} register`);
+          return false;
+        }
+        return true;
+      });
       if (fresh.length) {
         jobs.push({
           city, tab, sheet,
-          startRow: lastFilledRow(target, map.cols) + 1,
+          mapCols: map.cols,
           cols: map.cols.map(c => c.dst),
           rows: fresh.map(p => map.cols.map(c => p.row[c.src])),
         });
         totalNew += fresh.length;
       }
-      parts.push(`${tab}: ${fresh.length} new, ${people.length - fresh.length} already there`);
+      const inOther = notHere.length - fresh.length;
+      parts.push(`${tab}: ${fresh.length} new, ${people.length - notHere.length} already there` +
+        (inOther ? `, ${inOther} in another register` : ""));
     });
     lines.push(`• ${city}: ${parts.join("; ")}`);
   });
 
+  if (elsewhere.length) {
+    notes.push(`⚠ ${elsewhere.length} people are already in a different city's register and were not added again ` +
+      "(move them by hand if their city really changed):");
+    elsewhere.forEach(l => notes.push(l));
+  }
   return { lines: lines.concat(notes.length ? [""].concat(notes) : []), jobs, totalNew };
+}
+
+// Returns { "ученици": { email: city, ... }, "ментори": { ... } } for every register in Settings.
+// Registers that can't be opened, or tabs that are missing, are just left out.
+function emailsInAllRegisters(settings) {
+  const result = { [STUDENTS_SHEET]: {}, [MENTORS_SHEET]: {} };
+  Object.keys(settings).forEach(city => {
+    if (!settings[city]) return;
+    let dst;
+    try { dst = openRegister(settings[city]); } catch (e) { return; }
+    Object.keys(result).forEach(tab => {
+      try {
+        const t = readTab(dst.getSheetByName(tab), `${city}/${tab}`);
+        const iEmail = t.col(EMAIL_COLUMN);
+        t.rows.forEach(r => {
+          const email = normEmail(r[iEmail]);
+          if (email && !result[tab][email]) result[tab][email] = city;
+        });
+      } catch (e) { /* tab missing or no Email column: reported later for that city */ }
+    });
+  });
+  return result;
 }
 
 // Matches form columns to register columns by header name (not position).
@@ -295,7 +345,11 @@ function lastFilledRow(target, cols) {
 // Writes only the form columns, one block per run of adjacent columns,
 // so custom columns (notes, checkboxes, formulas) in the same rows are left untouched.
 function appendRows(job) {
-  const { sheet, startRow, cols, rows } = job;
+  const { sheet, cols, rows } = job;
+  // Find the first empty row NOW, not when the plan was made: several cities can share one
+  // register (e.g. София and Онлайн), and an earlier job may already have written rows here.
+  SpreadsheetApp.flush();
+  const startRow = lastFilledRow(readTab(sheet, `${job.city}/${job.tab}`), job.mapCols) + 1;
   const lastRow = startRow + rows.length - 1;
   if (lastRow > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), lastRow - sheet.getMaxRows());
 
