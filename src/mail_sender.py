@@ -1,5 +1,6 @@
 import csv
 import logging
+import mimetypes
 import os
 import smtplib
 import ssl
@@ -95,25 +96,28 @@ def create_message(
         receiver_email: str,
         subject: str,
         body: str,
-        attachment_file_path: str):
-    message = MIMEMultipart("alternative")
+        attachment_file_path: str | None):
+    message = MIMEMultipart("mixed")
     message["Subject"] = subject
     message["From"] = sender_email
     message["To"] = receiver_email
 
     # Attach body
-    message.attach(MIMEText(body, "plain"))
+    message.attach(MIMEText(body, "plain", "utf-8"))
 
     # Attach file
     if attachment_file_path is not None:
         file_name = os.path.basename(attachment_file_path)
-        payload = MIMEBase("application", "octet-stream", Name=file_name)
+        mime_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+        main_type, sub_type = mime_type.split("/", 1)
+        payload = MIMEBase(main_type, sub_type)
         with open(attachment_file_path, "rb") as binary_file:
             payload.set_payload(binary_file.read())
 
         encoders.encode_base64(payload)
 
-        payload.add_header('Content-Decomposition', 'attachment', filename=file_name)
+        payload.set_param("name", file_name, charset="utf-8")
+        payload.add_header("Content-Disposition", "attachment", filename=("utf-8", "", file_name))
         message.attach(payload)
 
     return message
@@ -151,8 +155,9 @@ def send_mails():
                     attachment_file_name = row[config[CSV_ATTACHMENT_FILE_INDEX]]
                     attachment_file_path = f"{get_attachments_folder_path(config[ATTACHMENTS_FOLDER_NAME])}/{attachment_file_name}"
                     if not os.path.exists(attachment_file_path):
-                        attachment_file_name = None
-                        attachment_file_path = None
+                        log_error(f"NOT SENT to '{receiver_email}': missing attachment '{attachment_file_path}'")
+                        continue
+
                 message = create_message(sender_email, receiver_email, subject, body, attachment_file_path)
 
                 log(f"Sending email to '{receiver_email}' | Attached file: '{attachment_file_name}'")
