@@ -10,11 +10,10 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# For debugging purposes you can test on a local server.
-# First you have to start an smtp server and then run the script with a '--debug' argument.
-# 1. $ python -m aiosmtpd -n (for python 3.12+)
-# 1. $ python -m smtpd -c DebuggingServer -n localhost:8025 (for python 3.11-)
-# 2. $ python mail_sender.py --debug
+# For a dry run, the emails are sent to a local server, which prints them instead of sending them.
+# First you have to start an smtp server and then run the script with a '--dry-run' argument.
+# 1. $ .venv\Scripts\python.exe -m aiosmtpd -n
+# 2. $ python mail_sender.py --dry-run
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
 CONFIG_FILE_NAME = "mail_sender.xml"
@@ -34,8 +33,8 @@ CSV_ATTACHMENT_FILE_INDEX = "attachment_file_index"
 logging.basicConfig(filename=f"{CURRENT_DIRECTORY}/mail_sender.log", filemode="w", level=logging.DEBUG)
 
 
-def in_debug_mode():
-    return len(sys.argv) > 1 and sys.argv[1] == "--debug"
+def is_dry_run():
+    return len(sys.argv) > 1 and sys.argv[1] == "--dry-run"
 
 
 def log(message: str):
@@ -48,27 +47,36 @@ def log_error(message: str):
     logging.error(message)
 
 
+def get_text(parent_node, tag: str, required: bool = True) -> str:
+    # An empty tag has no text (None), so it's read as ""
+    text = (parent_node.find(tag).text or "").strip()
+    if required and not text:
+        raise ValueError(f"<{tag}> is empty in {CONFIG_FILE_NAME}")
+
+    return text
+
+
 def get_config():
     config = dict()
     root_node = ET.parse(CONFIG_FILE_PATH)
 
-    # Login
+    # Login (not needed in a dry run)
     login_node = root_node.find("login")
-    config[SENDER_EMAIL] = login_node.find(SENDER_EMAIL).text
-    config[PASSWORD] = login_node.find(PASSWORD).text
+    config[SENDER_EMAIL] = get_text(login_node, SENDER_EMAIL, required=not is_dry_run())
+    config[PASSWORD] = get_text(login_node, PASSWORD, required=not is_dry_run())
 
     # Message
     message_node = root_node.find("message")
-    config[SUBJECT] = message_node.find(SUBJECT).text
-    config[BODY] = message_node.find(BODY).text.strip()
-    config[ATTACHMENTS_FOLDER_NAME] = message_node.find(ATTACHMENTS_FOLDER_NAME).text
+    config[SUBJECT] = get_text(message_node, SUBJECT)
+    config[BODY] = get_text(message_node, BODY)
+    config[ATTACHMENTS_FOLDER_NAME] = get_text(message_node, ATTACHMENTS_FOLDER_NAME)
 
     # CSV
     csv_node = root_node.find("csv")
-    config[CSV_FILE_NAME] = csv_node.find(CSV_FILE_NAME).text
-    config[CSV_RECEIVER_NAME_INDEX] = int(csv_node.find(CSV_RECEIVER_NAME_INDEX).text)
-    config[CSV_RECEIVER_EMAIL_INDEX] = int(csv_node.find(CSV_RECEIVER_EMAIL_INDEX).text)
-    config[CSV_ATTACHMENT_FILE_INDEX] = int(csv_node.find(CSV_ATTACHMENT_FILE_INDEX).text)
+    config[CSV_FILE_NAME] = get_text(csv_node, CSV_FILE_NAME)
+    config[CSV_RECEIVER_NAME_INDEX] = int(get_text(csv_node, CSV_RECEIVER_NAME_INDEX))
+    config[CSV_RECEIVER_EMAIL_INDEX] = int(get_text(csv_node, CSV_RECEIVER_EMAIL_INDEX))
+    config[CSV_ATTACHMENT_FILE_INDEX] = int(get_text(csv_node, CSV_ATTACHMENT_FILE_INDEX))
     return config
 
 
@@ -113,18 +121,18 @@ def create_message(
 
 def send_mails():
     try:
-        smtp_server = "localhost" if in_debug_mode() else "smtp.gmail.com"
-        port = 8025 if in_debug_mode() else 587  # For starttls
+        smtp_server = "localhost" if is_dry_run() else "smtp.gmail.com"
+        port = 8025 if is_dry_run() else 587  # For starttls
         server = smtplib.SMTP(smtp_server, port)
         server.ehlo()
-        if not in_debug_mode():
+        if not is_dry_run():
             context = ssl.create_default_context()
             server.starttls(context=context)  # Secure the connection
             server.ehlo()
 
         config = get_config()
         sender_email = config[SENDER_EMAIL]
-        if not in_debug_mode():
+        if not is_dry_run():
             password = config[PASSWORD]
             server.login(sender_email, password)
 
